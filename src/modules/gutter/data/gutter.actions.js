@@ -1,28 +1,411 @@
-/**
- * Server Actions — gutter.actions.js
- *
- * Runs on the server. This is the ONLY place you talk to the database.
- *
- * WHAT TO DO:
- *   1. Import getSupabaseAdmin from "@/core/supabase/admin"
- *   2. Write one async function per operation:
- *        load___()   → SELECT
- *        create___() → INSERT
- *        update___() → UPDATE
- *        delete___() → DELETE or soft-delete
- *   3. Return clean objects — no raw DB internals.
- *
- * EXAMPLE:
- *   export async function loadGutterData() {
- *     const supabase = getSupabaseAdmin();
- *     const { data, error } = await supabase
- *       .from("your_table_name")
- *       .select("*")
- *       .order("created_at", { ascending: false });
- *     if (error) throw new Error(error.message);
- *     return { items: data ?? [] };
- *   }
- */
 "use server";
 
-// import { getSupabaseAdmin } from "@/core/supabase/admin";
+import { getSupabaseAdmin } from "@/core/supabase/admin";
+import { calculateQuote } from "./gutter.data";
+
+// ─── Helpers ───────────────────────────────────────────────
+
+function hasValue(v) {
+  return v !== undefined && v !== null && String(v).trim() !== "";
+}
+
+function toIntOrNull(v) {
+  if (!hasValue(v)) return null;
+  const n = Number(v);
+  return Number.isFinite(n) ? Math.trunc(n) : null;
+}
+
+function toNumOrNull(v) {
+  if (!hasValue(v)) return null;
+  const n = Number(v);
+  return Number.isFinite(n) ? n : null;
+}
+
+function toUserDisplayName(u) {
+  if (!u || typeof u !== "object") return "";
+  const c = [u.full_name, u.display_name, u.username, u.user_name, u.name, u.email];
+  const found = c.find(hasValue);
+  return hasValue(found) ? String(found).trim() : "";
+}
+
+// ─── Setup ─────────────────────────────────────────────────
+
+export async function loadGutterSetup() {
+  const supabase = getSupabaseAdmin();
+
+  const queries = {
+    statuses:      supabase.from("gtr_s_statuses").select("*").order("status_id"),
+    colors:        supabase.from("gtr_s_colors").select("*").order("color_id"),
+    manufacturers: supabase.from("gtr_s_manufacturers").select("*").order("manufacturer_id"),
+    leafGuards:    supabase.from("gtr_s_leaf_guards").select("*").order("leaf_guard_id"),
+    tripRates:     supabase.from("gtr_s_trip_rates").select("*").order("trip_id"),
+    discounts:     supabase.from("gtr_s_discounts").select("*").order("discount_id"),
+    company:       supabase.from("psb_s_company").select("comp_id,comp_name,short_name,comp_email,comp_phone").order("comp_id").limit(1),
+  };
+
+  const keys = Object.keys(queries);
+  const settled = await Promise.allSettled(Object.values(queries));
+  const result = {};
+  const errors = [];
+
+  settled.forEach((r, i) => {
+    const key = keys[i];
+    if (r.status === "fulfilled" && !r.value.error) {
+      result[key] = r.value.data || [];
+    } else {
+      result[key] = [];
+      errors.push(key);
+    }
+  });
+
+  return { ...result, sourceErrors: errors };
+}
+
+// ─── Project List ──────────────────────────────────────────
+
+export async function loadGutterProjects() {
+  const supabase = getSupabaseAdmin();
+
+  const [projectsResult, statusesResult] = await Promise.all([
+    supabase
+      .from("gtr_t_projects")
+      .select(
+        "proj_id, project_name, customer, project_address, status_id, date, " +
+        "created_at, updated_at, manufacturer_id, trip_id, discount_id, leaf_guard_id, " +
+        "request_link, deposit_percent, total_project_price, created_by, updated_by, " +
+        "gtr_s_statuses(name), gtr_s_manufacturers(name,rate), " +
+        "gtr_s_trip_rates(label,rate), gtr_s_discounts(percentage,description), " +
+        "gtr_s_leaf_guards(name,price)"
+      )
+      .order("updated_at", { ascending: false }),
+    supabase.from("gtr_s_statuses").select("status_id, name").order("status_id"),
+  ]);
+
+  if (projectsResult.error) throw new Error(projectsResult.error.message);
+  if (statusesResult.error) throw new Error(statusesResult.error.message);
+
+  const projects = projectsResult.data || [];
+
+  // Resolve audit user names
+  const userIds = Array.from(
+    new Set(
+      projects
+        .flatMap((p) => [toIntOrNull(p.created_by), toIntOrNull(p.updated_by)])
+        .filter((v) => v !== null)
+    )
+  );
+
+  let userById = new Map();
+  if (userIds.length > 0) {
+    const { data: users } = await supabase
+      .from("psb_s_user")
+      .select("*")
+      .in("user_id", userIds);
+    userById = (users || []).reduce((m, u) => {
+      m.set(String(u.user_id), u);
+      return m;
+    }, new Map());
+  }
+
+  const enriched = projects.map((p) => {
+    const createdUser = userById.get(String(toIntOrNull(p.created_by)));
+    const updatedUser = userById.get(String(toIntOrNull(p.updated_by)));
+    return {
+      ...p,
+      created_by_name: toUserDisplayName(createdUser) || (p.created_by ? `User #${p.created_by}` : "--"),
+      updated_by_name: toUserDisplayName(updatedUser) || (p.updated_by ? `User #${p.updated_by}` : "--"),
+    };
+  });
+
+  return { projects: enriched, statuses: statusesResult.data || [] };
+}
+
+// ─── Single Project ────────────────────────────────────────
+
+export async function loadGutterProject(projId) {
+  const id = toIntOrNull(projId);
+  if (id === null) throw new Error("projId is required");
+
+  const supabase = getSupabaseAdmin();
+
+  const [headerResult, sidesResult, extrasResult, colorsResult] = await Promise.all([
+    supabase.from("gtr_t_projects").select("*").eq("proj_id", id).maybeSingle(),
+    supabase.from("gtr_m_project_sides").select("*").eq("proj_id", id).order("side_index"),
+    supabase.from("gtr_m_project_extras").select("*").eq("proj_id", id).order("extra_id"),
+    supabase.from("gtr_s_colors").select("color_id, name").order("color_id"),
+  ]);
+
+  if (headerResult.error) throw new Error(headerResult.error.message);
+  if (sidesResult.error) throw new Error(sidesResult.error.message);
+  if (extrasResult.error) throw new Error(extrasResult.error.message);
+  if (colorsResult.error) throw new Error(colorsResult.error.message);
+
+  return {
+    projectHeader: headerResult.data || null,
+    projectSides: sidesResult.data || [],
+    projectExtras: extrasResult.data || [],
+    colors: colorsResult.data || [],
+  };
+}
+
+// ─── Save Project (Create / Edit) ─────────────────────────
+
+async function fetchQuoteSetupByHeader(supabase, header) {
+  const [mfr, trip, disc, lg] = await Promise.all([
+    hasValue(header.manufacturer_id)
+      ? supabase.from("gtr_s_manufacturers").select("manufacturer_id, name, rate").eq("manufacturer_id", header.manufacturer_id).maybeSingle()
+      : { data: null, error: null },
+    hasValue(header.trip_id)
+      ? supabase.from("gtr_s_trip_rates").select("trip_id, label, rate").eq("trip_id", header.trip_id).maybeSingle()
+      : { data: null, error: null },
+    hasValue(header.discount_id)
+      ? supabase.from("gtr_s_discounts").select("discount_id, percentage").eq("discount_id", header.discount_id).maybeSingle()
+      : { data: null, error: null },
+    hasValue(header.leaf_guard_id)
+      ? supabase.from("gtr_s_leaf_guards").select("leaf_guard_id, name, price").eq("leaf_guard_id", header.leaf_guard_id).maybeSingle()
+      : { data: null, error: null },
+  ]);
+
+  for (const r of [mfr, trip, disc, lg]) {
+    if (r.error) throw new Error(r.error.message);
+  }
+
+  return {
+    materialManufacturer: mfr.data ? [{ id: header.manufacturer_id, name: mfr.data.name || "", rate: mfr.data.rate ?? 0 }] : [],
+    leafGuard: lg.data ? [{ id: header.leaf_guard_id, name: lg.data.name || "", price: lg.data.price ?? 0 }] : [],
+    tripRates: trip.data ? [{ id: header.trip_id, label: trip.data.label || "", rate: trip.data.rate ?? 0 }] : [],
+    discounts: disc.data ? [{ id: header.discount_id, percent: disc.data.percentage ?? 0 }] : [],
+  };
+}
+
+function computeProjectTotalPrice(header, sides, extras, quoteSetup) {
+  try {
+    const input = {
+      manufacturerId: header.manufacturer_id,
+      tripId: header.trip_id,
+      discountId: header.discount_id,
+      leafGuardId: header.leaf_guard_id,
+      cstm_trip_rate: header.cstm_trip_rate,
+      cstm_manufacturer_rate: header.cstm_manufacturer_rate,
+      cstm_discount_percentage: header.cstm_discount_percentage,
+      cstm_leaf_guard_price: header.cstm_leaf_guard_price,
+      deposit_percent: header.deposit_percent,
+      discountIncluded: Boolean(header.discount_id || hasValue(header.cstm_discount_percentage)),
+      leafGuardIncluded: Boolean(header.leaf_guard_id || hasValue(header.cstm_leaf_guard_price)),
+      extrasIncluded: Array.isArray(extras) && extras.length > 0,
+      depositIncluded: hasValue(header.deposit_percent) && Number(header.deposit_percent) > 0,
+      sections: (sides || []).map((r) => ({ sides: r.segments, length: r.length, height: r.height, downspoutQty: r.downspout_qty })),
+      extras: (extras || []).map((r) => ({ description: r.name || "", qty: r.quantity, unitPrice: r.unit_price })),
+    };
+    const result = calculateQuote(input, quoteSetup);
+    const total = Number(result?.pricing?.projectTotal);
+    return Number.isFinite(total) ? total : null;
+  } catch {
+    return null;
+  }
+}
+
+export async function saveGutterProject({ isEdit, projectId, header, sides, extras }) {
+  const supabase = getSupabaseAdmin();
+  const editMode = isEdit === true;
+  const existingId = toIntOrNull(projectId);
+
+  if (editMode && existingId === null) {
+    throw new Error("A valid project id is required for edit saves");
+  }
+
+  const h = {
+    project_name: hasValue(header.project_name) ? String(header.project_name).trim() : "",
+    customer: hasValue(header.customer) ? String(header.customer).trim() : "",
+    project_address: hasValue(header.project_address) ? String(header.project_address).trim() : "",
+    status_id: toIntOrNull(header.status_id),
+    date: hasValue(header.date) ? String(header.date) : null,
+    trip_id: toIntOrNull(header.trip_id),
+    manufacturer_id: toIntOrNull(header.manufacturer_id),
+    discount_id: toIntOrNull(header.discount_id),
+    request_link: hasValue(header.request_link) ? String(header.request_link).trim() : "",
+    leaf_guard_id: toIntOrNull(header.leaf_guard_id),
+    cstm_trip_rate: toNumOrNull(header.cstm_trip_rate),
+    cstm_manufacturer_rate: toNumOrNull(header.cstm_manufacturer_rate),
+    cstm_discount_percentage: toNumOrNull(header.cstm_discount_percentage),
+    cstm_leaf_guard_price: toNumOrNull(header.cstm_leaf_guard_price),
+    deposit_percent: toNumOrNull(header.deposit_percent),
+  };
+
+  if (!h.status_id || !h.manufacturer_id || !h.trip_id) {
+    throw new Error("Status, Manufacturer, and Trip Rate are required");
+  }
+
+  const sideRows = (Array.isArray(sides) ? sides : [])
+    .map((row, i) => {
+      const segments = toIntOrNull(row.segments);
+      const length = toNumOrNull(row.length);
+      const height = toNumOrNull(row.height);
+      const dsQty = toIntOrNull(row.downspout_qty);
+      const gc = toIntOrNull(row.gutter_color_id);
+      const dc = toIntOrNull(row.downspout_color_id);
+      if (segments === null && length === null && height === null && dsQty === null && gc === null && dc === null) return null;
+      return { side_index: toIntOrNull(row.side_index) ?? i + 1, segments, length, height, downspout_qty: dsQty, gutter_color_id: gc, downspout_color_id: dc };
+    })
+    .filter(Boolean);
+
+  const extraRows = (Array.isArray(extras) ? extras : [])
+    .map((row) => {
+      const name = hasValue(row.name) ? String(row.name).trim() : "";
+      const qty = toIntOrNull(row.quantity);
+      const price = toNumOrNull(row.unit_price);
+      if (!name && qty === null && price === null) return null;
+      return { name, quantity: qty, unit_price: price };
+    })
+    .filter(Boolean);
+
+  const now = new Date().toISOString();
+  const quoteSetup = await fetchQuoteSetupByHeader(supabase, h);
+  const totalPrice = computeProjectTotalPrice(h, sideRows, extraRows, quoteSetup);
+
+  let currentProjId = existingId;
+
+  if (editMode) {
+    const { error } = await supabase
+      .from("gtr_t_projects")
+      .update({ ...h, total_project_price: totalPrice, updated_at: now })
+      .eq("proj_id", currentProjId);
+    if (error) throw new Error("Error saving project: " + error.message);
+
+    const { error: e1 } = await supabase.from("gtr_m_project_sides").delete().eq("proj_id", currentProjId);
+    if (e1) throw new Error("Error clearing sides: " + e1.message);
+    const { error: e2 } = await supabase.from("gtr_m_project_extras").delete().eq("proj_id", currentProjId);
+    if (e2) throw new Error("Error clearing extras: " + e2.message);
+  } else {
+    const { data: inserted, error } = await supabase
+      .from("gtr_t_projects")
+      .insert({ ...h, total_project_price: totalPrice, created_at: now, updated_at: now })
+      .select("proj_id")
+      .single();
+    if (error || !inserted?.proj_id) throw new Error("Error saving project: " + (error?.message || "Unknown error"));
+    currentProjId = inserted.proj_id;
+  }
+
+  if (sideRows.length > 0) {
+    const { error } = await supabase.from("gtr_m_project_sides").insert(sideRows.map((r) => ({ proj_id: currentProjId, ...r })));
+    if (error) throw new Error("Error saving sides: " + error.message);
+  }
+
+  if (extraRows.length > 0) {
+    const { error } = await supabase.from("gtr_m_project_extras").insert(extraRows.map((r) => ({ proj_id: currentProjId, ...r })));
+    if (error) throw new Error("Error saving extras: " + error.message);
+  }
+
+  return { projId: currentProjId };
+}
+
+// ─── Update Status ─────────────────────────────────────────
+
+export async function updateGutterProjectStatus(projId, statusId) {
+  const id = toIntOrNull(projId);
+  const sid = toIntOrNull(statusId);
+  if (id === null || sid === null) throw new Error("projId and statusId are required");
+
+  const supabase = getSupabaseAdmin();
+  const { error } = await supabase
+    .from("gtr_t_projects")
+    .update({ status_id: sid, updated_at: new Date().toISOString() })
+    .eq("proj_id", id);
+
+  if (error) throw new Error(error.message);
+  return { success: true };
+}
+
+// ─── Delete Project ────────────────────────────────────────
+
+export async function deleteGutterProject(projId) {
+  const id = toIntOrNull(projId);
+  if (id === null) throw new Error("projId is required");
+
+  const supabase = getSupabaseAdmin();
+
+  const { error: e1 } = await supabase.from("gtr_m_project_sides").delete().eq("proj_id", id);
+  if (e1) throw new Error(e1.message);
+  const { error: e2 } = await supabase.from("gtr_m_project_extras").delete().eq("proj_id", id);
+  if (e2) throw new Error(e2.message);
+  const { error: e3 } = await supabase.from("gtr_t_projects").delete().eq("proj_id", id);
+  if (e3) throw new Error(e3.message);
+
+  return { success: true };
+}
+
+// ─── Purchase Order ────────────────────────────────────────
+
+export async function loadPurchaseOrder(projId) {
+  const id = toIntOrNull(projId);
+  if (id === null) throw new Error("projId is required");
+
+  const supabase = getSupabaseAdmin();
+  const { data, error } = await supabase
+    .from("gtr_m_purchorder")
+    .select("*")
+    .eq("proj_id", id)
+    .maybeSingle();
+
+  if (error) throw new Error(error.message);
+  return data || null;
+}
+
+export async function savePurchaseOrder(projId, purchaseOrder) {
+  const id = toIntOrNull(projId);
+  if (id === null) throw new Error("projId is required");
+
+  const po = purchaseOrder && typeof purchaseOrder === "object" ? purchaseOrder : {};
+  const toInt = (v) => { const n = toIntOrNull(v); return n === null ? 0 : Math.max(0, n); };
+  const toNum = (v) => { if (!hasValue(v)) return 0; const n = Number(v); return Number.isFinite(n) && n >= 0 ? n : 0; };
+  const normalizeColor = (v) => { const t = String(v ?? "").trim(); return (!t || t === "--") ? null : t; };
+
+  const normalized = {
+    k_style_gutter_color: normalizeColor(po.k_style_gutter_color),
+    downspout_color: normalizeColor(po.downspout_color),
+    gutter_coil_total_ft: toNum(po.gutter_coil_total_ft),
+    gutter_coil_total_lbs: toNum(po.gutter_coil_total_lbs),
+    right_end_caps_qty: toInt(po.right_end_caps_qty),
+    left_end_caps_qty: toInt(po.left_end_caps_qty),
+    downpipe_qty: toInt(po.downpipe_qty),
+    one_piece_offset_qty: toInt(po.one_piece_offset_qty),
+    elbow_a_qty: toInt(po.elbow_a_qty),
+    spray_paint_qty: toInt(po.spray_paint_qty),
+    zip_screws_qty: toInt(po.zip_screws_qty),
+    zip_screws_internal_qty: toInt(po.zip_screws_internal_qty),
+    total_downspouts: toInt(po.total_downspouts),
+    total_endcaps: toInt(po.total_endcaps),
+    rectangular_outlets: toInt(po.rectangular_outlets),
+    internal_screws: toInt(po.internal_screws),
+    hidden_hangers_qty: toInt(po.hidden_hangers_qty),
+    box_screws_qty: toInt(po.box_screws_qty),
+  };
+
+  const supabase = getSupabaseAdmin();
+  const now = new Date().toISOString();
+
+  const { data: existing } = await supabase
+    .from("gtr_m_purchorder")
+    .select("purch_order_id")
+    .eq("proj_id", id)
+    .maybeSingle();
+
+  if (existing?.purch_order_id) {
+    const { data, error } = await supabase
+      .from("gtr_m_purchorder")
+      .update({ ...normalized, updated_at: now })
+      .eq("proj_id", id)
+      .select("*")
+      .single();
+    if (error) throw new Error(error.message);
+    return data;
+  }
+
+  const { data, error } = await supabase
+    .from("gtr_m_purchorder")
+    .insert({ proj_id: id, ...normalized, created_at: now, updated_at: now })
+    .select("*")
+    .single();
+  if (error) throw new Error(error.message);
+  return data;
+}
