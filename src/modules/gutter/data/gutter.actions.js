@@ -409,3 +409,59 @@ export async function savePurchaseOrder(projId, purchaseOrder) {
   if (error) throw new Error(error.message);
   return data;
 }
+
+// ─── Setup Table CRUD ──────────────────────────────────────
+
+const SETUP_TABLES = {
+  statuses:      { table: "gtr_s_statuses",      pk: "status_id" },
+  colors:        { table: "gtr_s_colors",        pk: "color_id" },
+  manufacturers: { table: "gtr_s_manufacturers", pk: "manufacturer_id" },
+  leafGuards:    { table: "gtr_s_leaf_guards",   pk: "leaf_guard_id" },
+  tripRates:     { table: "gtr_s_trip_rates",    pk: "trip_id" },
+  discounts:     { table: "gtr_s_discounts",     pk: "discount_id" },
+};
+
+function resolveSetupTable(key) {
+  const entry = SETUP_TABLES[key];
+  if (!entry) throw new Error(`Unknown setup table key: "${key}"`);
+  return entry;
+}
+
+export async function createSetupRow(tableKey, row) {
+  const { table, pk } = resolveSetupTable(tableKey);
+  if (!row || typeof row !== "object") throw new Error("Row data is required.");
+
+  const supabase = getSupabaseAdmin();
+  const payload = { ...row };
+  delete payload[pk]; // Let the DB auto-generate the ID
+
+  const { data, error } = await supabase.from(table).insert(payload).select("*").single();
+  if (error) throw new Error(error.message);
+  return data;
+}
+
+export async function updateSetupRow(tableKey, id, updates) {
+  const { table, pk } = resolveSetupTable(tableKey);
+  const rowId = toIntOrNull(id);
+  if (rowId === null) throw new Error(`${pk} is required.`);
+  if (!updates || typeof updates !== "object") throw new Error("Update data is required.");
+
+  const supabase = getSupabaseAdmin();
+  const payload = { ...updates };
+  delete payload[pk]; // Don't overwrite the PK
+
+  const { data, error } = await supabase.from(table).update(payload).eq(pk, rowId).select("*").single();
+  if (error) throw new Error(error.message);
+  return data;
+}
+
+export async function deleteSetupRow(tableKey, id) {
+  const { table, pk } = resolveSetupTable(tableKey);
+  const rowId = toIntOrNull(id);
+  if (rowId === null) throw new Error(`${pk} is required.`);
+
+  const supabase = getSupabaseAdmin();
+  const { error } = await supabase.from(table).delete().eq(pk, rowId);
+  if (error) throw new Error(error.message);
+  return { success: true };
+}

@@ -57,6 +57,7 @@ const gutterModule = {
   routes: [
     { path: "/gutter", page: "GutterPage" },
     { path: "/gutter/new", page: "GutterProjectFormPage" },
+    { path: "/gutter/setup", page: "GutterSetupPage" },
     { path: "/gutter/[id]", page: "GutterProjectFormPage" },
     { path: "/gutter/[id]/purchase-order", page: "GutterPurchaseOrderPage" },
     { path: "/gutter/[id]/work-order", page: "GutterWorkOrderPage" },

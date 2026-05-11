@@ -145,17 +145,6 @@ export default function GutterView({ projects = [], statuses = [] }) {
       ),
     },
     {
-      key: "created_by_name",
-      label: "Created by",
-      sortable: true,
-      render: (row) => (
-        <div>
-          <p className="mb-0">{row.created_by_name || "--"}</p>
-          <p className="text-muted small mb-0">{row._createdAtLabel}</p>
-        </div>
-      ),
-    },
-    {
       key: "updated_by_name",
       label: "Updated by",
       sortable: true,
@@ -207,23 +196,16 @@ export default function GutterView({ projects = [], statuses = [] }) {
 
   const actions = useMemo(() => [
     {
-      key: "open",
-      label: "Open",
-      icon: "pencil",
-      type: "primary",
-      onClick: (row) => router.push(`/gutter/${row.proj_id}`),
-    },
-    {
       key: "work-order",
       label: "Work Order",
-      icon: "clipboard-list",
+      icon: "list-check",
       type: "secondary",
       onClick: (row) => router.push(`/gutter/${row.proj_id}/work-order`),
     },
     {
       key: "purchase-order",
       label: "Purchase Order",
-      icon: "cart-shopping",
+      icon: "box",
       type: "secondary",
       onClick: (row) => router.push(`/gutter/${row.proj_id}/purchase-order`),
     },
