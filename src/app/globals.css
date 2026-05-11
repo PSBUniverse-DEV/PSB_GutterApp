@@ -362,6 +362,51 @@
   border-color: var(--psb-action-restore-hover) !important;
 }
 
+/* ── Outline button variants ── */
+.psb-ui-button-outline {
+  background-color: transparent;
+}
+
+.psb-ui-button.btn-outline-primary {
+  color: var(--psb-action-edit);
+  border-color: var(--psb-action-edit);
+}
+.psb-ui-button.btn-outline-primary:hover:not(:disabled) {
+  background-color: var(--psb-action-edit);
+  border-color: var(--psb-action-edit);
+  color: #fff;
+}
+
+.psb-ui-button.btn-outline-secondary {
+  color: var(--psb-action-cancel);
+  border-color: var(--psb-action-cancel);
+}
+.psb-ui-button.btn-outline-secondary:hover:not(:disabled) {
+  background-color: var(--psb-action-cancel);
+  border-color: var(--psb-action-cancel);
+  color: #fff;
+}
+
+.psb-ui-button.btn-outline-danger {
+  color: var(--psb-action-delete);
+  border-color: var(--psb-action-delete);
+}
+.psb-ui-button.btn-outline-danger:hover:not(:disabled) {
+  background-color: var(--psb-action-delete);
+  border-color: var(--psb-action-delete);
+  color: #fff;
+}
+
+.psb-ui-button.btn-outline-success {
+  color: var(--psb-action-add);
+  border-color: var(--psb-action-add);
+}
+.psb-ui-button.btn-outline-success:hover:not(:disabled) {
+  background-color: var(--psb-action-add);
+  border-color: var(--psb-action-add);
+  color: #fff;
+}
+
 .psb-setup-action-btn {
   color: #678095;
   background: transparent;
