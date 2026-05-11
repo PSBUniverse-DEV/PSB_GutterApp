@@ -22,6 +22,7 @@
       ]
     },
     "psb-gutter-app": {
+      "packageName": "psbuniverse",
       "development": {
         "fallback": "psb-gutter-app.vercel.app"
       },

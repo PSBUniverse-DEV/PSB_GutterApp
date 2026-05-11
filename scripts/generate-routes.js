@@ -220,6 +220,13 @@ function syncMicrofrontends(moduleDefinitions) {
   const mfe = JSON.parse(fs.readFileSync(MFE_PATH, "utf-8"));
   if (!mfe.applications) return;
 
+  // Read host package name so local microfrontends get served by this app
+  // instead of being proxied to the fallback URL.
+  const pkgPath = path.join(ROOT, "package.json");
+  const hostPackageName = fs.existsSync(pkgPath)
+    ? JSON.parse(fs.readFileSync(pkgPath, "utf-8")).name || null
+    : null;
+
   let changed = false;
 
   for (const { definition } of moduleDefinitions) {
@@ -229,6 +236,15 @@ function syncMicrofrontends(moduleDefinitions) {
     const appName = definition.microfrontend;
     const appEntry = mfe.applications[appName];
     if (!appEntry?.routing?.[0]) continue;
+
+    // When a module lives in this host repo, mark the microfrontend entry
+    // with the host's packageName so withMicrofrontends serves it locally
+    // instead of proxying to the fallback URL.
+    if (hostPackageName && appEntry.packageName !== hostPackageName) {
+      appEntry.packageName = hostPackageName;
+      changed = true;
+      console.log(`  SYNC microfrontends.json: "${appName}" → packageName = "${hostPackageName}" (local)`);
+    }
 
     // Build the expected paths from the module's routes
     const basePaths = definition.routes.map((r) => r.path).filter(Boolean);
