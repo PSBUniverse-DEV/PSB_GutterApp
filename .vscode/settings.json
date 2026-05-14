@@ -1,4 +1,4 @@
-{
+﻿{
   "code-runner.runInTerminal": true,
   "code-runner.clearPreviousOutput": true,
   "code-runner.preserveFocus": false,
@@ -16,5 +16,16 @@
     "Move-Item": true,
     "ForEach-Object": true,
     "Set-Content": true
+  },
+  "files.readonlyInclude": {
+    "**/src/core/**": true,
+    "**/src/shared/**": true,
+    "**/src/styles/**": true,
+    "**/src/modules/admin/**": true,
+    "**/src/modules/psbpages/**": true,
+    "**/supabase/**": true,
+    "**/config/**": true,
+    "**/scripts/**": true,
+    "**/docs/**": true
   }
 }
