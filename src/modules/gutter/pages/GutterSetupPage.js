@@ -1,5 +1,6 @@
 import { loadGutterSetup } from "../data/gutter.actions";
-import GutterSetupView from "./GutterSetupView";
+import GutterSetupView from "./setup/GutterSetupView";
+import "./setup/setup-workspace.css";
 
 export const dynamic = "force-dynamic";
 

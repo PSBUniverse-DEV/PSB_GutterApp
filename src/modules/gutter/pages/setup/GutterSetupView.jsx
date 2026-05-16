@@ -2,11 +2,14 @@
 
 import { useState, useMemo, useCallback } from "react";
 import { useRouter } from "next/navigation";
-import { Container, Nav, Row, Col, Form } from "react-bootstrap";
-import { Button, Card, Modal, TableZ, toastError, toastSuccess } from "@/shared/components/ui";
-import { createSetupRow, updateSetupRow, deleteSetupRow } from "../data/gutter.actions";
+import { Modal, TableZ, toastError, toastSuccess } from "@/shared/components/ui";
+import { createSetupRow, updateSetupRow, deleteSetupRow } from "../../data/gutter.actions";
+import SetupWorkspaceLayout from "./SetupWorkspaceLayout";
+import SetupSidebar from "./SetupSidebar";
+import SetupToolbar from "./SetupToolbar";
+import SetupFormModal from "./SetupFormModal";
 
-// ─── Table Definitions ───────────────────────────────────────
+// ─── Table Definitions (unchanged from original) ─────────────────────────────
 
 const TABLE_DEFS = [
   {
@@ -76,10 +79,12 @@ const TABLE_DEFS = [
     pk: "discount_id",
     columns: [
       { key: "description", label: "Description", sortable: true },
-      { key: "percentage", label: "Percentage", sortable: true, render: (row) => {
-        const v = Number(row.percentage || 0);
-        return v <= 1 ? `${(v * 100).toFixed(2)}%` : `${v.toFixed(2)}%`;
-      }},
+      {
+        key: "percentage", label: "Percentage", sortable: true, render: (row) => {
+          const v = Number(row.percentage || 0);
+          return v <= 1 ? `${(v * 100).toFixed(2)}%` : `${v.toFixed(2)}%`;
+        }
+      },
     ],
     fields: [
       { key: "description", label: "Description", required: true },
@@ -88,7 +93,7 @@ const TABLE_DEFS = [
   },
 ];
 
-// ─── Component ───────────────────────────────────────────────
+// ─── Main Setup View ─────────────────────────────────────────────────────────
 
 export default function GutterSetupView({ setup = {} }) {
   const router = useRouter();
@@ -98,6 +103,7 @@ export default function GutterSetupView({ setup = {} }) {
   const [draft, setDraft] = useState({});
   const [busy, setBusy] = useState(false);
   const [confirmDelete, setConfirmDelete] = useState(null);
+  const [searchValue, setSearchValue] = useState("");
 
   const tableDef = useMemo(() => TABLE_DEFS.find((t) => t.key === activeTab), [activeTab]);
 
@@ -106,7 +112,35 @@ export default function GutterSetupView({ setup = {} }) {
     return Array.isArray(data) ? data : [];
   }, [setup, activeTab]);
 
-  // ─── Modal Handlers ──────────────────────────────────────
+  // Filter rows by toolbar search
+  const filteredRows = useMemo(() => {
+    if (!searchValue.trim()) return rows;
+    const q = searchValue.toLowerCase();
+    return rows.filter((row) =>
+      tableDef?.columns.some((col) => {
+        const val = row[col.key];
+        return val != null && String(val).toLowerCase().includes(q);
+      })
+    );
+  }, [rows, searchValue, tableDef]);
+
+  // Sidebar table list with counts
+  const sidebarTables = useMemo(
+    () => TABLE_DEFS.map((t) => ({
+      key: t.key,
+      label: t.label,
+      count: Array.isArray(setup[t.key]) ? setup[t.key].length : 0,
+    })),
+    [setup]
+  );
+
+  // Reset search when switching tabs
+  const handleTabChange = useCallback((key) => {
+    setActiveTab(key);
+    setSearchValue("");
+  }, []);
+
+  // ─── Modal Handlers (preserved from original) ──────────────
 
   const openAdd = useCallback(() => {
     setDraft({});
@@ -189,7 +223,7 @@ export default function GutterSetupView({ setup = {} }) {
     }
   }, [confirmDelete, tableDef, activeTab, router]);
 
-  // ─── Table Actions ───────────────────────────────────────
+  // ─── Render ────────────────────────────────────────────────
 
   const actions = useMemo(() => [
     {
@@ -208,67 +242,66 @@ export default function GutterSetupView({ setup = {} }) {
     },
   ], [openEdit]);
 
+  const singularName = tableDef?.label?.replace(/s$/, "") || "Item";
+
   return (
-    <Container fluid className="px-3 px-lg-4 py-4">
-      <div className="d-flex justify-content-between align-items-center mb-3">
-        <div>
-          <h2 className="mb-1 fw-bold">Gutter Setup</h2>
-          <p className="text-muted mb-0">Manage setup tables for the gutter module (statuses, colors, manufacturers, etc.).</p>
-        </div>
-        <Button variant="primary" onClick={openAdd}>+ Add {tableDef?.label?.replace(/s$/, "") || "Item"}</Button>
-      </div>
-
-      <Nav variant="tabs" className="mb-3">
-        {TABLE_DEFS.map((t) => (
-          <Nav.Item key={t.key}>
-            <Nav.Link active={activeTab === t.key} onClick={() => setActiveTab(t.key)} style={{ cursor: "pointer" }}>
-              {t.label}
-            </Nav.Link>
-          </Nav.Item>
-        ))}
-      </Nav>
-
-      {tableDef && (
-        <TableZ
-          data={rows}
-          columns={tableDef.columns}
-          rowIdKey={tableDef.pk}
-          actions={actions}
-          searchPlaceholder={`Search ${tableDef.label.toLowerCase()}...`}
-          emptyMessage={`No ${tableDef.label.toLowerCase()} found.`}
-        />
-      )}
+    <div className="setup-workspace-root">
+      <SetupWorkspaceLayout
+        sidebar={
+          <SetupSidebar
+            tables={sidebarTables}
+            activeKey={activeTab}
+            onSelect={handleTabChange}
+          />
+        }
+        toolbar={
+          <SetupToolbar
+            tableName={tableDef?.label || ""}
+            recordCount={rows.length}
+            searchValue={searchValue}
+            onSearchChange={(v) => { setSearchValue(v); }}
+            onAdd={openAdd}
+            addLabel={`Add ${singularName}`}
+          />
+        }
+      >
+        {tableDef && (
+          <div className="setup-grid-wrap">
+            <TableZ
+              data={filteredRows}
+              columns={tableDef.columns}
+              rowIdKey={tableDef.pk}
+              actions={actions}
+              hideSearch
+              emptyMessage={`No ${tableDef.label.toLowerCase()} found.`}
+            />
+          </div>
+        )}
+      </SetupWorkspaceLayout>
 
       {/* Add / Edit Modal */}
-      <Modal show={!!modalMode} onHide={closeModal} title={modalMode === "add" ? `Add ${tableDef?.label?.replace(/s$/, "")}` : `Edit ${tableDef?.label?.replace(/s$/, "")}`}>
-        {tableDef?.fields.map((f) => (
-          <Form.Group key={f.key} className="mb-3">
-            <Form.Label className="small fw-semibold">{f.label}{f.required ? " *" : ""}</Form.Label>
-            <Form.Control
-              type={f.type || "text"}
-              step={f.step || undefined}
-              value={draft[f.key] ?? ""}
-              onChange={(e) => handleDraftChange(f.key, e.target.value)}
-              placeholder={f.label}
-            />
-          </Form.Group>
-        ))}
-        <div className="d-flex gap-2 justify-content-end">
-          <Button variant="secondary" onClick={closeModal}>Cancel</Button>
-          <Button variant="primary" loading={busy} onClick={handleSave}>
-            {modalMode === "add" ? "Add" : "Save"}
-          </Button>
-        </div>
-      </Modal>
+      <SetupFormModal
+        show={!!modalMode}
+        mode={modalMode}
+        tableName={singularName}
+        fields={tableDef?.fields}
+        draft={draft}
+        busy={busy}
+        onDraftChange={handleDraftChange}
+        onSave={handleSave}
+        onClose={closeModal}
+      />
 
       {/* Delete Confirmation */}
-      <Modal show={!!confirmDelete} onHide={() => setConfirmDelete(null)} title="Delete Row">
-        <p>Delete this row? This cannot be undone.</p>
-        <div className="d-flex gap-2 justify-content-end">
-          <Button variant="secondary" onClick={() => setConfirmDelete(null)}>Cancel</Button>
-          <Button variant="danger" loading={busy} onClick={handleDelete}>Delete</Button>
+      <Modal show={!!confirmDelete} onHide={() => setConfirmDelete(null)} title="Confirm Delete">
+        <p className="setup-delete-msg">Delete this row? This cannot be undone.</p>
+        <div className="setup-delete-actions">
+          <button className="setup-form-modal__btn setup-form-modal__btn--cancel" onClick={() => setConfirmDelete(null)}>Cancel</button>
+          <button className="setup-form-modal__btn setup-form-modal__btn--danger" disabled={busy} onClick={handleDelete}>
+            {busy ? "Deleting..." : "Delete"}
+          </button>
         </div>
       </Modal>
-    </Container>
+    </div>
   );
 }
