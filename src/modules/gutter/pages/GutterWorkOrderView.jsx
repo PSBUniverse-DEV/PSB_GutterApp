@@ -2,17 +2,16 @@
 
 import { useState, useMemo } from "react";
 import Link from "next/link";
-import { Container, Row, Col, Form, Table } from "react-bootstrap";
-import { Button, Card, toastInfo } from "@/shared/components/ui";
+import { Container, Row, Col, Form } from "react-bootstrap";
+import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
+import { faArrowLeft, faCheck, faPrint, faRulerCombined, faBoxOpen, faSignsPost } from "@fortawesome/free-solid-svg-icons";
+import { faBuilding, faPenToSquare, faIdBadge, faNoteSticky } from "@fortawesome/free-regular-svg-icons";
+import { Button, toastInfo } from "@/shared/components/ui";
 import { calculateMaterials } from "../data/gutter.data";
+import styles from "./GutterWorkOrder.module.css";
 
 const MAX_SIZE_ROWS = 4;
 const MAX_DSP_ROWS = 8;
-
-const toNumber = (value) => {
-  const parsed = Number(value);
-  return Number.isFinite(parsed) ? parsed : 0;
-};
 
 const toDisplay = (value) => {
   if (value === null || value === undefined || value === "") return "";
@@ -46,14 +45,12 @@ export default function GutterWorkOrderView({ projectId, projectData }) {
     gutterSize: "6 inch K-Style",
   });
 
-  // Build color lookup
   const colorById = useMemo(() => {
     const map = {};
     (Array.isArray(colors) ? colors : []).forEach((c) => { map[String(c.color_id)] = c.name; });
     return map;
   }, [colors]);
 
-  // Build sections for materials calculation
   const sections = useMemo(() => {
     return (Array.isArray(sides) ? sides : []).map((side) => {
       const gutterColor = colorById[String(side.gutter_color_id)] || "--";
@@ -105,173 +102,228 @@ export default function GutterWorkOrderView({ projectId, projectData }) {
   if (!header) return <Container className="py-4">Project not found.</Container>;
 
   return (
-    <Container className="py-4" style={{ maxWidth: 1180 }}>
-      <div className="d-flex align-items-center mb-3">
-        <Link href={`/gutter/${projectId}`} className="back-link me-3">
-          <i className="bi bi-arrow-left" aria-hidden="true" /> Back to Project
-        </Link>
-        <div>
-          <h2 className="mb-0">Work Order</h2>
-          <p className="text-muted mb-0">{header.project_name || header.proj_id}</p>
+    <div className={styles.woPage}>
+      {/* ─── Compact Top Header ─── */}
+      <div className={styles.woHeader}>
+        <div className={styles.woHeaderLeft}>
+          <Link href={`/gutter/${projectId}`} className={styles.woBackLink}>
+            <FontAwesomeIcon icon={faArrowLeft} aria-hidden="true" />
+          </Link>
+          <div className={styles.woHeaderTitle}>
+            <h1 className={styles.woTitle}>Work Order</h1>
+            <span className={styles.woSubtitle}>{header.project_name || `PO# ${header.proj_id}`}</span>
+          </div>
+          <div className={styles.woHeaderMeta}>
+            <div className={styles.woMetaItem}>
+              <span className={styles.woMetaLabel}>PO#</span>
+              <span className={styles.woMetaValue}>{toDisplay(header.proj_id)}</span>
+            </div>
+            <div className={styles.woMetaItem}>
+              <span className={styles.woMetaLabel}>Date</span>
+              <span className={styles.woMetaValue}>{toDisplay(header.date)}</span>
+            </div>
+            <div className={styles.woMetaItem}>
+              <span className={styles.woMetaLabel}>Address</span>
+              <span className={styles.woMetaValue}>{toDisplay(header.project_address)}</span>
+            </div>
+          </div>
+        </div>
+        <div className={styles.woHeaderActions}>
+          <Button variant="secondary" onClick={() => window.open(`/gutter/${projectId}/print`, "_blank")}>
+            <FontAwesomeIcon icon={faPrint} className="me-1" /> Print
+          </Button>
+          <Button variant="success" onClick={saveWorkOrder}>
+            <FontAwesomeIcon icon={faCheck} className="me-1" /> Save
+          </Button>
         </div>
       </div>
 
-      <Card className="mb-3">
-        <div className="p-3">
-          <Row className="g-3 align-items-start">
-            <Col lg={4}>
-              <div className="border p-3 h-100">
-                <h2 className="mb-1 fw-bold">Premium Gutters</h2>
-                <p className="mb-0 fw-semibold">&amp; DOORS</p>
-                <p className="small mb-0">sales.pdg@premiumsteelgroup.com</p>
-                <p className="small mb-0">Phone: 817-502-2520</p>
-              </div>
-            </Col>
+      {/* ─── Workspace Body ─── */}
+      <div className={styles.woBody}>
+        {/* ─── Main Content (Left) ─── */}
+        <div className={styles.woMain}>
 
-            <Col lg={8}>
-              <div className="border">
-                <div className="text-center py-2 fw-bold text-white" style={{ backgroundColor: "#111" }}>
-                  Work Order
+          {/* Project + Gutter Config */}
+          <div className={styles.woSection}>
+            <div className={styles.woSectionHeader}>
+              <FontAwesomeIcon icon={faBuilding} /> Project &amp; Configuration
+            </div>
+            <div className={styles.woSectionBody}>
+              <div className={styles.woInfoGrid}>
+                <div className={styles.woCompanyBlock}>
+                  <strong className={styles.woCompanyName}>Premium Gutters &amp; DOORS</strong>
+                  <span className={styles.woCompanyDetail}>sales.pdg@premiumsteelgroup.com</span>
+                  <span className={styles.woCompanyDetail}>817-502-2520</span>
                 </div>
-                <div className="p-2">
-                  <Table size="sm" bordered className="mb-2 align-middle">
-                    <tbody>
-                      <tr><td style={{ width: "34%" }} className="fw-semibold">DATE</td><td>{toDisplay(header.date)}</td></tr>
-                      <tr><td className="fw-semibold">Customer PO#</td><td>{toDisplay(header.proj_id)}</td></tr>
-                      <tr><td className="fw-semibold">Project Name</td><td>{toDisplay(header.project_name)}</td></tr>
-                      <tr><td className="fw-semibold">Project Address</td><td>{toDisplay(header.project_address)}</td></tr>
-                    </tbody>
-                  </Table>
-
-                  <Row className="g-2 mb-2">
-                    <Col md={6}>
-                      <Form.Group>
-                        <Form.Label className="small mb-1">Installation Date</Form.Label>
-                        <Form.Control size="sm" type="date" value={workOrder.installDate} onChange={(e) => updateField("installDate", e.target.value)} />
-                      </Form.Group>
-                    </Col>
-                    <Col md={6}>
-                      <Form.Group>
-                        <Form.Label className="small mb-1">Installer Name</Form.Label>
-                        <Form.Control size="sm" value={workOrder.installerName} onChange={(e) => updateField("installerName", e.target.value)} />
-                      </Form.Group>
-                    </Col>
-                  </Row>
-
-                  <Table size="sm" bordered className="mb-2 align-middle">
-                    <tbody>
-                      <tr><td className="fw-semibold" style={{ width: "34%" }}>K-Style Gutter Color</td><td>{materials?.colors?.kStyleGutterColor || "--"}</td></tr>
-                      <tr><td className="fw-semibold">Downspout Color</td><td>{materials?.colors?.downspoutColor || "--"}</td></tr>
-                    </tbody>
-                  </Table>
+                <div className={styles.woConfigGrid}>
+                  <div className={styles.woConfigItem}>
+                    <span className={styles.woConfigLabel}>K-Style Gutter Color</span>
+                    <span className={styles.woConfigValue}>{materials?.colors?.kStyleGutterColor || "--"}</span>
+                  </div>
+                  <div className={styles.woConfigItem}>
+                    <span className={styles.woConfigLabel}>Downspout Color</span>
+                    <span className={styles.woConfigValue}>{materials?.colors?.downspoutColor || "--"}</span>
+                  </div>
                 </div>
               </div>
-            </Col>
-          </Row>
+            </div>
+          </div>
 
-          <Row className="g-3 mt-1">
-            <Col lg={6}>
-              <Table size="sm" bordered className="align-middle mb-0">
-                <thead>
-                  <tr>
-                    <th style={{ width: "20%" }}>Size</th>
-                    <th style={{ width: "40%" }}>Length</th>
-                    <th style={{ width: "40%" }}>Height</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {sectionRows.map((row, index) => (
-                    <tr key={`section-${index}`}>
-                      <td>{workOrder.gutterSize}</td>
-                      <td>#{index + 1} Length: {toDisplay(row.length)}</td>
-                      <td>#{index + 1} Height: {toDisplay(row.height)}</td>
-                    </tr>
-                  ))}
-                </tbody>
-              </Table>
-            </Col>
-
-            <Col lg={6}>
-              <Table size="sm" bordered className="align-middle mb-0">
-                <thead>
-                  <tr>
-                    <th>Field</th>
-                    <th style={{ width: "20%" }}>QTY</th>
-                    <th style={{ width: "26%" }}>Color</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  <tr><td>Gutter Coil 15&quot; (Total Ft / Total Lbs)</td><td>{toDecimalDisplay(materials?.gutterCoil?.totalFt)}</td><td>{toDecimalDisplay(materials?.gutterCoil?.totalLbs)} / {materials?.gutterCoil?.color || "--"}</td></tr>
-                  <tr><td>Right End Caps - 6&quot; K-Style</td><td>{toWholeDisplay(materials?.endCaps?.right?.qty)}</td><td>{materials?.endCaps?.right?.color || "--"}</td></tr>
-                  <tr><td>Left End Caps - 6&quot; K-Style</td><td>{toWholeDisplay(materials?.endCaps?.left?.qty)}</td><td>{materials?.endCaps?.left?.color || "--"}</td></tr>
-                  <tr><td>3&quot; x 4&quot; Downpipe 10&apos;ft</td><td>{toWholeDisplay(materials?.downpipe?.qty)}</td><td>{materials?.downpipe?.color || "--"}</td></tr>
-                  <tr><td>3&quot; x 4&quot; - 6&quot; One Piece Offset</td><td>{toWholeDisplay(materials?.onePieceOffset?.qty)}</td><td>{materials?.onePieceOffset?.color || "--"}</td></tr>
-                  <tr><td>3&quot; x 4&quot; -(A) Elbow</td><td>{toWholeDisplay(materials?.elbow?.qty)}</td><td>{materials?.elbow?.color || "--"}</td></tr>
-                  <tr><td>#8 x 1/2&quot; Zip Screws</td><td>{toWholeDisplay(materials?.zipScrews?.qty)}</td><td>{materials?.zipScrews?.color || "--"}</td></tr>
-                  <tr><td>6&quot; Hidden Hangers</td><td>{toWholeDisplay(materials?.internal?.hiddenHangers)}</td><td>Auto</td></tr>
-                </tbody>
-              </Table>
-            </Col>
-          </Row>
-
-          <Row className="g-3 mt-2">
-            <Col lg={7}>
-              <Table size="sm" bordered className="align-middle mb-0">
-                <tbody>
-                  <tr>
-                    <td className="fw-semibold" style={{ width: "28%" }}>Installer Signature</td>
-                    <td><Form.Control size="sm" value={workOrder.installerSignature} onChange={(e) => updateField("installerSignature", e.target.value)} /></td>
-                  </tr>
-                </tbody>
-              </Table>
-            </Col>
-            <Col lg={5}>
-              <Table size="sm" bordered className="align-middle mb-0">
-                <tbody>
-                  <tr>
-                    <td className="fw-semibold" style={{ width: "34%" }}>Date</td>
-                    <td><Form.Control size="sm" type="date" value={workOrder.signatureDate} onChange={(e) => updateField("signatureDate", e.target.value)} /></td>
-                  </tr>
-                </tbody>
-              </Table>
-            </Col>
-          </Row>
-
-          <Row className="g-3 mt-2">
-            <Col lg={7}>
-              <div className="border position-relative" style={{ minHeight: 390 }}>
-                <div className="position-absolute top-0 start-50 translate-middle-x px-2 bg-white fw-semibold" style={{ marginTop: "-12px" }}>Front</div>
-                <div className="position-absolute bottom-0 start-50 translate-middle-x px-2 bg-white fw-semibold" style={{ marginBottom: "-12px" }}>Back</div>
-                <div className="position-absolute top-50 start-0 translate-middle-y border px-3 py-2 fw-semibold bg-white" style={{ marginLeft: "-2px" }}>Left</div>
-                <div className="position-absolute top-50 end-0 translate-middle-y border px-3 py-2 fw-semibold bg-white" style={{ marginRight: "-2px" }}>Right</div>
+          {/* Measurements */}
+          <div className={styles.woSection}>
+            <div className={styles.woSectionHeader}>
+              <FontAwesomeIcon icon={faRulerCombined} /> Measurements
+            </div>
+            <div className={styles.woSectionBody}>
+              <div className={styles.woMeasureGrid}>
+                {sectionRows.map((row, index) => (
+                  <div key={`section-${index}`} className={styles.woMeasureRow}>
+                    <span className={styles.woMeasureLabel}>#{index + 1}</span>
+                    <span className={styles.woMeasureSize}>{workOrder.gutterSize}</span>
+                    <div className={styles.woMeasureField}>
+                      <span className={styles.woMeasureFieldLabel}>L</span>
+                      <span className={styles.woMeasureFieldValue}>{toDisplay(row.length) || "—"}</span>
+                    </div>
+                    <div className={styles.woMeasureField}>
+                      <span className={styles.woMeasureFieldLabel}>H</span>
+                      <span className={styles.woMeasureFieldValue}>{toDisplay(row.height) || "—"}</span>
+                    </div>
+                  </div>
+                ))}
               </div>
-            </Col>
+            </div>
+          </div>
 
-            <Col lg={5}>
-              <Table size="sm" bordered className="align-middle mb-2">
-                <tbody>
-                  {dspRows.map((dspNumber, index) => (
-                    <tr key={`dsp-${dspNumber}`}>
-                      <td className="fw-semibold" style={{ width: "36%" }}>DSP#{dspNumber}</td>
-                      <td><Form.Control size="sm" value={toDisplay(workOrder.downspoutAssignments[index])} onChange={(e) => updateDownspoutAssignment(index, e.target.value)} /></td>
-                    </tr>
-                  ))}
-                </tbody>
-              </Table>
-
-              <div className="border p-2" style={{ minHeight: 180 }}>
-                <p className="fw-semibold mb-2">Extra Notes</p>
-                <Form.Control as="textarea" rows={6} value={workOrder.notes} onChange={(e) => updateField("notes", e.target.value)} placeholder="Installation notes, special instructions..." />
+          {/* Material Summary */}
+          <div className={styles.woSection}>
+            <div className={styles.woSectionHeader}>
+              <FontAwesomeIcon icon={faBoxOpen} /> Material Summary
+            </div>
+            <div className={styles.woSectionBody}>
+              <div className={styles.woMaterialList}>
+                <div className={`${styles.woMaterialRow} ${styles.woMaterialRowHeader}`}>
+                  <span className={styles.woMaterialName}>Item</span>
+                  <span className={styles.woMaterialQty}>QTY</span>
+                  <span className={styles.woMaterialColor}>Color</span>
+                </div>
+                <div className={styles.woMaterialRow}>
+                  <span className={styles.woMaterialName}>Gutter Coil 15&quot; (Ft / Lbs)</span>
+                  <span className={styles.woMaterialQty}>{toDecimalDisplay(materials?.gutterCoil?.totalFt)}</span>
+                  <span className={styles.woMaterialColor}>{toDecimalDisplay(materials?.gutterCoil?.totalLbs)} / {materials?.gutterCoil?.color || "--"}</span>
+                </div>
+                <div className={styles.woMaterialRow}>
+                  <span className={styles.woMaterialName}>Right End Caps - 6&quot; K-Style</span>
+                  <span className={styles.woMaterialQty}>{toWholeDisplay(materials?.endCaps?.right?.qty)}</span>
+                  <span className={styles.woMaterialColor}>{materials?.endCaps?.right?.color || "--"}</span>
+                </div>
+                <div className={styles.woMaterialRow}>
+                  <span className={styles.woMaterialName}>Left End Caps - 6&quot; K-Style</span>
+                  <span className={styles.woMaterialQty}>{toWholeDisplay(materials?.endCaps?.left?.qty)}</span>
+                  <span className={styles.woMaterialColor}>{materials?.endCaps?.left?.color || "--"}</span>
+                </div>
+                <div className={styles.woMaterialRow}>
+                  <span className={styles.woMaterialName}>3&quot; x 4&quot; Downpipe 10&apos;ft</span>
+                  <span className={styles.woMaterialQty}>{toWholeDisplay(materials?.downpipe?.qty)}</span>
+                  <span className={styles.woMaterialColor}>{materials?.downpipe?.color || "--"}</span>
+                </div>
+                <div className={styles.woMaterialRow}>
+                  <span className={styles.woMaterialName}>3&quot; x 4&quot; - 6&quot; One Piece Offset</span>
+                  <span className={styles.woMaterialQty}>{toWholeDisplay(materials?.onePieceOffset?.qty)}</span>
+                  <span className={styles.woMaterialColor}>{materials?.onePieceOffset?.color || "--"}</span>
+                </div>
+                <div className={styles.woMaterialRow}>
+                  <span className={styles.woMaterialName}>3&quot; x 4&quot; -(A) Elbow</span>
+                  <span className={styles.woMaterialQty}>{toWholeDisplay(materials?.elbow?.qty)}</span>
+                  <span className={styles.woMaterialColor}>{materials?.elbow?.color || "--"}</span>
+                </div>
+                <div className={styles.woMaterialRow}>
+                  <span className={styles.woMaterialName}>#8 x 1/2&quot; Zip Screws</span>
+                  <span className={styles.woMaterialQty}>{toWholeDisplay(materials?.zipScrews?.qty)}</span>
+                  <span className={styles.woMaterialColor}>{materials?.zipScrews?.color || "--"}</span>
+                </div>
+                <div className={styles.woMaterialRow}>
+                  <span className={styles.woMaterialName}>6&quot; Hidden Hangers</span>
+                  <span className={styles.woMaterialQty}>{toWholeDisplay(materials?.internal?.hiddenHangers)}</span>
+                  <span className={styles.woMaterialColor}>Auto</span>
+                </div>
               </div>
-            </Col>
-          </Row>
+            </div>
+          </div>
+
+          {/* Sketch Workspace */}
+          <div className={styles.woSection}>
+            <div className={styles.woSectionHeader}>
+              <FontAwesomeIcon icon={faPenToSquare} /> Sketch / Diagram
+            </div>
+            <div className={styles.woSectionBody}>
+              <div className={styles.woSketchContainer}>
+                <div className={styles.woSketchCanvas}>
+                  <span className={styles.woSketchLabelTop}>Front</span>
+                  <span className={styles.woSketchLabelBottom}>Back</span>
+                  <span className={styles.woSketchLabelLeft}>Left</span>
+                  <span className={styles.woSketchLabelRight}>Right</span>
+                </div>
+              </div>
+            </div>
+          </div>
         </div>
-      </Card>
 
-      <div className="d-flex gap-2 mb-4">
-        <Button variant="success" onClick={saveWorkOrder}>Save Work Order</Button>
-        <Button variant="secondary" onClick={() => window.print()}>Print Work Order</Button>
+        {/* ─── Utility Sidebar (Right) ─── */}
+        <div className={styles.woSidebar}>
+
+          {/* Installer Info */}
+          <div className={styles.woSection}>
+            <div className={styles.woSectionHeader}>
+              <FontAwesomeIcon icon={faIdBadge} /> Installer
+            </div>
+            <div className={styles.woSectionBody}>
+              <Form.Group className="mb-2">
+                <Form.Label className={styles.woFormLabel}>Installer Name</Form.Label>
+                <Form.Control size="sm" value={workOrder.installerName} onChange={(e) => updateField("installerName", e.target.value)} />
+              </Form.Group>
+              <Form.Group className="mb-2">
+                <Form.Label className={styles.woFormLabel}>Installation Date</Form.Label>
+                <Form.Control size="sm" type="date" value={workOrder.installDate} onChange={(e) => updateField("installDate", e.target.value)} />
+              </Form.Group>
+              <Form.Group className="mb-2">
+                <Form.Label className={styles.woFormLabel}>Signature</Form.Label>
+                <Form.Control size="sm" value={workOrder.installerSignature} onChange={(e) => updateField("installerSignature", e.target.value)} />
+              </Form.Group>
+              <Form.Group>
+                <Form.Label className={styles.woFormLabel}>Signature Date</Form.Label>
+                <Form.Control size="sm" type="date" value={workOrder.signatureDate} onChange={(e) => updateField("signatureDate", e.target.value)} />
+              </Form.Group>
+            </div>
+          </div>
+
+          {/* DSP Assignments */}
+          <div className={styles.woSection}>
+            <div className={styles.woSectionHeader}>
+              <FontAwesomeIcon icon={faSignsPost} /> DSP Assignments
+            </div>
+            <div className={styles.woSectionBody}>
+              <div className={styles.woDspGrid}>
+                {dspRows.map((dspNumber, index) => (
+                  <div key={`dsp-${dspNumber}`} className={styles.woDspRow}>
+                    <label className={styles.woDspLabel}>DSP#{dspNumber}</label>
+                    <Form.Control size="sm" className={styles.woDspInput} value={toDisplay(workOrder.downspoutAssignments[index])} onChange={(e) => updateDownspoutAssignment(index, e.target.value)} />
+                  </div>
+                ))}
+              </div>
+            </div>
+          </div>
+
+          {/* Notes */}
+          <div className={styles.woSection}>
+            <div className={styles.woSectionHeader}>
+              <FontAwesomeIcon icon={faNoteSticky} /> Notes
+            </div>
+            <div className={styles.woSectionBody}>
+              <Form.Control as="textarea" rows={5} value={workOrder.notes} onChange={(e) => updateField("notes", e.target.value)} placeholder="Installation notes, special instructions..." className={styles.woNotesInput} />
+            </div>
+          </div>
+        </div>
       </div>
-    </Container>
+    </div>
   );
 }

@@ -1,0 +1,307 @@
+/* ─── Purchase Order Page — Aligned with Gutter Project Design System ─── */
+
+.poPage {
+  max-width: 1180px;
+  margin: 0 auto;
+  padding: 6px var(--psb-space-24);
+}
+
+/* ─── Compact Top Header ─── */
+
+.poHeader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 6px;
+  padding: 5px 10px;
+  margin-bottom: 6px;
+  background: var(--psb-surface);
+  border: 1px solid var(--psb-border);
+  border-radius: var(--psb-radius-8);
+  flex-wrap: wrap;
+}
+
+.poHeaderLeft {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+  min-width: 0;
+}
+
+.poBackLink {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  border-radius: var(--psb-radius-6);
+  border: 1px solid var(--psb-border);
+  color: var(--psb-text);
+  text-decoration: none;
+  transition: background var(--psb-transition-150);
+  flex-shrink: 0;
+}
+
+.poBackLink:hover {
+  background: var(--psb-bg);
+}
+
+.poHeaderTitle {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+
+.poTitle {
+  font-size: 14px;
+  font-weight: 700;
+  color: var(--psb-ink);
+  margin: 0;
+  line-height: 1.2;
+}
+
+.poSubtitle {
+  font-size: 11px;
+  color: var(--psb-muted);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.poHeaderMeta {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding-left: 10px;
+  border-left: 1px solid var(--psb-border);
+  flex-wrap: wrap;
+}
+
+.poMetaItem {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+}
+
+.poMetaLabel {
+  font-size: 10px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  color: var(--psb-muted);
+}
+
+.poMetaValue {
+  font-size: 11px;
+  font-weight: 500;
+  color: var(--psb-text);
+}
+
+.poHeaderActions {
+  display: flex;
+  align-items: center;
+  gap: var(--psb-space-8);
+  flex-shrink: 0;
+}
+
+/* ─── Workspace Body — Two Column ─── */
+
+.poBody {
+  display: grid;
+  grid-template-columns: 1fr 280px;
+  gap: 10px;
+  align-items: start;
+}
+
+/* ─── Main Content Area ─── */
+
+.poMain {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+/* ─── Sidebar ─── */
+
+.poSidebar {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+/* ─── Section Cards ─── */
+
+.poSection {
+  background: var(--psb-surface);
+  border: 1px solid var(--psb-border);
+  border-radius: var(--psb-radius-8);
+  overflow: hidden;
+}
+
+.poSectionHeader {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px var(--psb-space-8);
+  font-size: 10px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.4px;
+  color: var(--psb-muted);
+  background: var(--psb-bg);
+  border-bottom: 1px solid var(--psb-border);
+}
+
+.poSectionHeaderDanger {
+  color: var(--psb-action-delete);
+}
+
+.poSectionBody {
+  padding: 6px;
+}
+
+/* ─── Material List ─── */
+
+.poMaterialList {
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+}
+
+.poMaterialRow {
+  display: grid;
+  grid-template-columns: 1fr 100px 140px;
+  gap: 6px;
+  align-items: center;
+  padding: 4px var(--psb-space-8);
+  border-bottom: 1px solid var(--psb-border);
+}
+
+.poMaterialRow:last-child {
+  border-bottom: none;
+}
+
+.poMaterialRowHeader {
+  background: var(--psb-bg);
+  border-radius: var(--psb-radius-6) var(--psb-radius-6) 0 0;
+  font-weight: 600;
+  font-size: 10px;
+  text-transform: uppercase;
+  letter-spacing: 0.3px;
+  color: var(--psb-muted);
+  padding: 3px var(--psb-space-8);
+}
+
+.poMaterialName {
+  font-size: 11px;
+  color: var(--psb-text);
+}
+
+.poMaterialQty {
+  font-size: 11px;
+  font-weight: 700;
+  color: var(--psb-ink);
+  text-align: center;
+}
+
+.poMaterialColor {
+  font-size: 10px;
+  color: var(--psb-muted);
+  text-align: right;
+}
+
+/* ─── Internal Info List ─── */
+
+.poInternalList {
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+}
+
+.poInternalRow {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 6px;
+  padding: 4px var(--psb-space-4);
+  border-bottom: 1px solid var(--psb-border);
+}
+
+.poInternalRow:last-child {
+  border-bottom: none;
+}
+
+.poInternalLabel {
+  font-size: 11px;
+  color: var(--psb-text);
+}
+
+.poInternalValue {
+  font-size: 11px;
+  font-weight: 700;
+  color: var(--psb-ink);
+  min-width: 50px;
+  text-align: right;
+}
+
+/* ─── Inline Input ─── */
+
+.poInlineInput {
+  width: 60px !important;
+  min-height: 24px !important;
+  height: 24px !important;
+  padding: 1px 5px !important;
+  font-size: 11px !important;
+  text-align: center;
+  display: inline-block;
+}
+
+/* ─── Internal Section Styling ─── */
+
+.poSectionInternal {
+  border-color: var(--psb-status-failed-border);
+}
+
+/* ─── Responsive ─── */
+
+@media (max-width: 1024px) {
+  .poBody {
+    grid-template-columns: 1fr;
+  }
+}
+
+@media (max-width: 640px) {
+  .poPage {
+    padding: var(--psb-space-8) var(--psb-space-12);
+  }
+
+  .poHeaderMeta {
+    border-left: none;
+    padding-left: 0;
+    padding-top: var(--psb-space-8);
+    border-top: 1px solid var(--psb-border);
+    width: 100%;
+  }
+}
+
+/* ─── Print Styles ─── */
+
+@media print {
+  .poHeaderActions {
+    display: none;
+  }
+
+  .poSectionInternal {
+    display: none;
+  }
+
+  .poBody {
+    grid-template-columns: 1fr;
+  }
+
+  .poPage {
+    padding: 0;
+  }
+}

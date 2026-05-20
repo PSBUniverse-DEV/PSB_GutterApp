@@ -1,0 +1,488 @@
+/* ─── Work Order Page — SaaS Operational Layout ─── */
+
+.woPage {
+  max-width: 1180px;
+  margin: 0 auto;
+  padding: 6px var(--psb-space-24);
+}
+
+/* ─── Compact Top Header ─── */
+
+.woHeader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 6px;
+  padding: 5px 10px;
+  margin-bottom: 6px;
+  background: var(--psb-surface);
+  border: 1px solid var(--psb-border);
+  border-radius: var(--psb-radius-8);
+  flex-wrap: wrap;
+}
+
+.woHeaderLeft {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+  min-width: 0;
+}
+
+.woBackLink {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  border-radius: var(--psb-radius-6);
+  border: 1px solid var(--psb-border);
+  color: var(--psb-text);
+  text-decoration: none;
+  transition: background var(--psb-transition-150);
+  flex-shrink: 0;
+}
+
+.woBackLink:hover {
+  background: var(--psb-bg);
+}
+
+.woHeaderTitle {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+
+.woTitle {
+  font-size: 14px;
+  font-weight: 700;
+  color: var(--psb-ink);
+  margin: 0;
+  line-height: 1.2;
+}
+
+.woSubtitle {
+  font-size: 11px;
+  color: var(--psb-muted);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.woHeaderMeta {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding-left: 10px;
+  border-left: 1px solid var(--psb-border);
+  flex-wrap: wrap;
+}
+
+.woMetaItem {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+}
+
+.woMetaLabel {
+  font-size: 10px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  color: var(--psb-muted);
+}
+
+.woMetaValue {
+  font-size: 11px;
+  font-weight: 500;
+  color: var(--psb-text);
+}
+
+.woHeaderActions {
+  display: flex;
+  align-items: center;
+  gap: var(--psb-space-8);
+  flex-shrink: 0;
+}
+
+/* ─── Workspace Body — Two Column ─── */
+
+.woBody {
+  display: grid;
+  grid-template-columns: 1fr 260px;
+  gap: 10px;
+  align-items: start;
+}
+
+/* ─── Main Content Area ─── */
+
+.woMain {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+/* ─── Sidebar ─── */
+
+.woSidebar {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+/* ─── Section Cards ─── */
+
+.woSection {
+  background: var(--psb-surface);
+  border: 1px solid var(--psb-border);
+  border-radius: var(--psb-radius-8);
+  overflow: hidden;
+}
+
+.woSectionHeader {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px var(--psb-space-8);
+  font-size: 10px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.4px;
+  color: var(--psb-muted);
+  background: var(--psb-bg);
+  border-bottom: 1px solid var(--psb-border);
+}
+
+.woSectionBody {
+  padding: 6px;
+}
+
+/* ─── Project & Config Section ─── */
+
+.woInfoGrid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+  align-items: start;
+}
+
+.woCompanyBlock {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.woCompanyName {
+  font-size: 11px;
+  font-weight: 700;
+  color: var(--psb-ink);
+}
+
+.woCompanyDetail {
+  font-size: 11px;
+  color: var(--psb-muted);
+}
+
+.woConfigGrid {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.woConfigItem {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: var(--psb-space-4) var(--psb-space-8);
+  background: var(--psb-bg);
+  border-radius: var(--psb-radius-6);
+}
+
+.woConfigLabel {
+  font-size: 11px;
+  color: var(--psb-muted);
+  font-weight: 500;
+}
+
+.woConfigValue {
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--psb-text);
+}
+
+/* ─── Measurements Section ─── */
+
+.woMeasureGrid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 4px;
+}
+
+.woMeasureRow {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 3px 6px;
+  background: var(--psb-bg);
+  border-radius: var(--psb-radius-6);
+  border: 1px solid transparent;
+}
+
+.woMeasureLabel {
+  font-size: 11px;
+  font-weight: 700;
+  color: var(--psb-brand);
+  min-width: 18px;
+}
+
+.woMeasureSize {
+  font-size: 10px;
+  color: var(--psb-muted);
+  white-space: nowrap;
+}
+
+.woMeasureField {
+  display: flex;
+  align-items: center;
+  gap: 3px;
+  margin-left: auto;
+}
+
+.woMeasureFieldLabel {
+  font-size: 10px;
+  font-weight: 600;
+  color: var(--psb-muted);
+  text-transform: uppercase;
+}
+
+.woMeasureFieldValue {
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--psb-text);
+  min-width: 24px;
+}
+
+/* ─── Material Summary ─── */
+
+.woMaterialList {
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+}
+
+.woMaterialRow {
+  display: grid;
+  grid-template-columns: 1fr 60px 100px;
+  gap: 6px;
+  align-items: center;
+  padding: 4px 6px;
+  border-bottom: 1px solid var(--psb-border);
+}
+
+.woMaterialRow:last-child {
+  border-bottom: none;
+}
+
+.woMaterialRowHeader {
+  background: var(--psb-bg);
+  border-radius: var(--psb-radius-6) var(--psb-radius-6) 0 0;
+  font-weight: 600;
+  font-size: 9px;
+  text-transform: uppercase;
+  letter-spacing: 0.3px;
+  color: var(--psb-muted);
+  padding: 3px 6px;
+}
+
+.woMaterialName {
+  font-size: 11px;
+  color: var(--psb-text);
+}
+
+.woMaterialQty {
+  font-size: 11px;
+  font-weight: 700;
+  color: var(--psb-ink);
+  text-align: center;
+}
+
+.woMaterialColor {
+  font-size: 10px;
+  color: var(--psb-muted);
+  text-align: right;
+}
+
+/* ─── Sketch Workspace ─── */
+
+.woSketchContainer {
+  display: flex;
+  justify-content: center;
+}
+
+.woSketchCanvas {
+  position: relative;
+  width: 100%;
+  min-height: 180px;
+  border: 1px solid var(--psb-border);
+  border-radius: var(--psb-radius-6);
+  background: #fafcfe;
+}
+
+.woSketchLabelTop,
+.woSketchLabelBottom,
+.woSketchLabelLeft,
+.woSketchLabelRight {
+  position: absolute;
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--psb-muted);
+  background: var(--psb-surface);
+  padding: 2px 8px;
+  border-radius: var(--psb-radius-6);
+  border: 1px solid var(--psb-border);
+}
+
+.woSketchLabelTop {
+  top: -10px;
+  left: 50%;
+  transform: translateX(-50%);
+}
+
+.woSketchLabelBottom {
+  bottom: -10px;
+  left: 50%;
+  transform: translateX(-50%);
+}
+
+.woSketchLabelLeft {
+  left: -2px;
+  top: 50%;
+  transform: translateY(-50%);
+}
+
+.woSketchLabelRight {
+  right: -2px;
+  top: 50%;
+  transform: translateY(-50%);
+}
+
+/* ─── Sidebar Form Elements ─── */
+
+.woFormLabel {
+  font-size: 10px;
+  font-weight: 600;
+  color: var(--psb-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.3px;
+  margin-bottom: 1px;
+}
+
+/* ─── DSP Grid ─── */
+
+.woDspGrid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: var(--psb-space-4);
+}
+
+.woDspRow {
+  display: flex;
+  align-items: center;
+  gap: var(--psb-space-4);
+}
+
+.woDspLabel {
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--psb-muted);
+  min-width: 40px;
+  white-space: nowrap;
+}
+
+.woDspInput {
+  font-size: 11px !important;
+  padding: 1px 5px !important;
+  height: 24px !important;
+}
+
+/* ─── Notes ─── */
+
+.woNotesInput {
+  font-size: 11px !important;
+  resize: vertical;
+}
+
+/* ─── Compact form controls scoped to this page ─── */
+
+.woPage :global(.form-control),
+.woPage :global(.form-select) {
+  min-height: 26px !important;
+  height: 26px !important;
+  padding: 0.1rem 0.35rem !important;
+  font-size: 11px !important;
+}
+
+.woPage :global(textarea.form-control) {
+  min-height: 40px !important;
+  height: auto !important;
+}
+
+/* ─── Responsive ─── */
+
+@media (max-width: 1024px) {
+  .woBody {
+    grid-template-columns: 1fr;
+  }
+
+  .woHeaderMeta {
+    border-left: none;
+    padding-left: 0;
+    padding-top: var(--psb-space-8);
+    border-top: 1px solid var(--psb-border);
+    width: 100%;
+  }
+}
+
+@media (max-width: 640px) {
+  .woPage {
+    padding: var(--psb-space-8) var(--psb-space-12);
+  }
+
+  .woInfoGrid {
+    grid-template-columns: 1fr;
+  }
+
+  .woMeasureGrid {
+    grid-template-columns: 1fr;
+  }
+
+  .woDspGrid {
+    grid-template-columns: 1fr;
+  }
+}
+
+/* ─── Print Styles ─── */
+
+@media print {
+  .woHeader {
+    box-shadow: none;
+    border: 1px solid #ddd;
+  }
+
+  .woHeaderActions {
+    display: none;
+  }
+
+  .woBody {
+    grid-template-columns: 1fr 280px;
+  }
+
+  .woSection {
+    break-inside: avoid;
+  }
+
+  .woPage {
+    padding: 0;
+  }
+}

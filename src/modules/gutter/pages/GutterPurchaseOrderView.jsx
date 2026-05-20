@@ -2,10 +2,13 @@
 
 import { useState, useMemo, useCallback } from "react";
 import Link from "next/link";
-import { Container, Row, Col, Table, Form } from "react-bootstrap";
-import { Button, Card, toastError, toastSuccess } from "@/shared/components/ui";
+import { Container, Row, Col, Form } from "react-bootstrap";
+import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
+import { faArrowLeft, faCheck, faPrint, faBoxOpen, faUpRightFromSquare, faTriangleExclamation } from "@fortawesome/free-solid-svg-icons";
+import { Button, toastError, toastSuccess } from "@/shared/components/ui";
 import { savePurchaseOrder } from "../data/gutter.actions";
 import { calculateMaterials } from "../data/gutter.data";
+import styles from "./GutterPurchaseOrder.module.css";
 
 const toNumber = (value) => {
   const parsed = Number(value);
@@ -34,14 +37,12 @@ export default function GutterPurchaseOrderView({ projectId, projectData, stored
   });
   const [saving, setSaving] = useState(false);
 
-  // Build color lookup
   const colorById = useMemo(() => {
     const map = {};
     (Array.isArray(colors) ? colors : []).forEach((c) => { map[String(c.color_id)] = c.name; });
     return map;
   }, [colors]);
 
-  // Build sections for calculateMaterials
   const materialSource = useMemo(() => {
     const sections = (Array.isArray(sides) ? sides : []).map((side) => {
       const gutterColor = colorById[String(side.gutter_color_id)] || "";
@@ -106,95 +107,169 @@ export default function GutterPurchaseOrderView({ projectId, projectData, stored
   if (!header || !materials) return <Container className="py-4">Project not found.</Container>;
 
   return (
-    <Container className="py-4" style={{ maxWidth: 900 }}>
-      <div className="d-flex align-items-center mb-3">
-        <Link href={`/gutter/${projectId}`} className="back-link me-3">
-          <i className="bi bi-arrow-left" aria-hidden="true" /> Back to Project
-        </Link>
-        <div>
-          <h2 className="mb-0">Purchase Order</h2>
-          <p className="text-muted mb-0">{header.project_name || header.proj_id}</p>
+    <div className={styles.poPage}>
+      {/* ─── Compact Top Header ─── */}
+      <div className={styles.poHeader}>
+        <div className={styles.poHeaderLeft}>
+          <Link href={`/gutter/${projectId}`} className={styles.poBackLink}>
+            <FontAwesomeIcon icon={faArrowLeft} aria-hidden="true" />
+          </Link>
+          <div className={styles.poHeaderTitle}>
+            <h1 className={styles.poTitle}>Purchase Order</h1>
+            <span className={styles.poSubtitle}>{header.project_name || `PO# ${header.proj_id}`}</span>
+          </div>
+          <div className={styles.poHeaderMeta}>
+            <div className={styles.poMetaItem}>
+              <span className={styles.poMetaLabel}>Customer</span>
+              <span className={styles.poMetaValue}>{header.customer || "--"}</span>
+            </div>
+            <div className={styles.poMetaItem}>
+              <span className={styles.poMetaLabel}>Date</span>
+              <span className={styles.poMetaValue}>{header.date || "--"}</span>
+            </div>
+            <div className={styles.poMetaItem}>
+              <span className={styles.poMetaLabel}>Address</span>
+              <span className={styles.poMetaValue}>{header.project_address || "--"}</span>
+            </div>
+          </div>
+        </div>
+        <div className={styles.poHeaderActions}>
+          {header.request_link && (
+            <Button variant="secondary" onClick={() => window.open(header.request_link, "_blank", "noopener,noreferrer")}>
+              <FontAwesomeIcon icon={faUpRightFromSquare} className="me-1" /> Source Sheet
+            </Button>
+          )}
+          <Button variant="secondary" onClick={() => window.open(`/gutter/${projectId}/print`, "_blank")}>
+            <FontAwesomeIcon icon={faPrint} className="me-1" /> Print
+          </Button>
+          <Button variant="success" onClick={handleSave} disabled={saving} loading={saving}>
+            <FontAwesomeIcon icon={faCheck} className="me-1" /> Save
+          </Button>
         </div>
       </div>
 
-      <Card className="mb-3" title="Project Information">
-        <Row className="g-2">
-          <Col md={6}>
-            <p className="small mb-1"><strong>Customer:</strong> {header.customer || "--"}</p>
-            <p className="small mb-1"><strong>Project:</strong> {header.project_name || "--"}</p>
-          </Col>
-          <Col md={6}>
-            <p className="small mb-1"><strong>Address:</strong> {header.project_address || "--"}</p>
-            <p className="small mb-1"><strong>Date:</strong> {header.date || "--"}</p>
-          </Col>
-        </Row>
-      </Card>
+      {/* ─── Workspace Body ─── */}
+      <div className={styles.poBody}>
+        {/* ─── Main Content ─── */}
+        <div className={styles.poMain}>
 
-      <Card className="mb-3" title="Material Fields">
-        <Table size="sm" bordered>
-          <thead>
-            <tr>
-              <th style={{ width: "50%" }}>Field</th>
-              <th style={{ width: "22%" }}>Qty / Value</th>
-              <th style={{ width: "28%" }}>Color / Note</th>
-            </tr>
-          </thead>
-          <tbody>
-            <tr><td>K-Style Gutter Color:</td><td>--</td><td>{materials.colors.kStyleGutterColor}</td></tr>
-            <tr><td>Downspout Color:</td><td>--</td><td>{materials.colors.downspoutColor}</td></tr>
-            <tr><td>Gutter Coil 15&quot;</td><td>{formatNumber(materials.gutterCoil.totalFt)} ft</td><td>{materials.gutterCoil.color} ({formatNumber(materials.gutterCoil.totalLbs, 3)} lbs)</td></tr>
-            <tr><td>Right End Caps - 6&quot; K-Style</td><td>{formatNumber(materials.endCaps.right.qty)}</td><td>{materials.endCaps.right.color}</td></tr>
-            <tr><td>Left End Caps - 6&quot; K-Style</td><td>{formatNumber(materials.endCaps.left.qty)}</td><td>{materials.endCaps.left.color}</td></tr>
-            <tr><td>3&quot; x 4&quot; Downpipe 10&apos;ft</td><td>{formatNumber(materials.downpipe.qty)}</td><td>{materials.downpipe.color}</td></tr>
-            <tr><td>3&quot; x 4&quot; - 6&quot; One Piece Offset</td><td>{formatNumber(materials.onePieceOffset.qty)}</td><td>{materials.onePieceOffset.color}</td></tr>
-            <tr><td>3&quot; x 4&quot; -(A) Elbow</td><td>{formatNumber(materials.elbow.qty)}</td><td>{materials.elbow.color}</td></tr>
-            <tr>
-              <td>Spray Paint for Touch up:</td>
-              <td><Form.Control size="sm" type="number" min="0" step="1" value={manualInputs.sprayPaintQty} onChange={(e) => handleManualInputChange("sprayPaintQty", e.target.value)} /></td>
-              <td>{materials.sprayPaint.color}</td>
-            </tr>
-            <tr>
-              <td>#8 x 1/2&quot; Zip Screws</td>
-              <td><Form.Control size="sm" type="number" min="0" step="1" value={manualInputs.zipScrewsQty} onChange={(e) => handleManualInputChange("zipScrewsQty", e.target.value)} /></td>
-              <td>{materials.zipScrews.color}</td>
-            </tr>
-            <tr><td>#8 x 1/2&quot; Zip Screws</td><td>{formatNumber(materials.internal.internalScrews)}</td><td>Internal Use Only</td></tr>
-          </tbody>
-        </Table>
-      </Card>
+          {/* Material Fields */}
+          <div className={styles.poSection}>
+            <div className={styles.poSectionHeader}>
+              <FontAwesomeIcon icon={faBoxOpen} /> Material Fields
+            </div>
+            <div className={styles.poSectionBody}>
+              <div className={styles.poMaterialList}>
+                <div className={`${styles.poMaterialRow} ${styles.poMaterialRowHeader}`}>
+                  <span className={styles.poMaterialName}>Field</span>
+                  <span className={styles.poMaterialQty}>Qty / Value</span>
+                  <span className={styles.poMaterialColor}>Color / Note</span>
+                </div>
+                <div className={styles.poMaterialRow}>
+                  <span className={styles.poMaterialName}>K-Style Gutter Color</span>
+                  <span className={styles.poMaterialQty}>--</span>
+                  <span className={styles.poMaterialColor}>{materials.colors.kStyleGutterColor}</span>
+                </div>
+                <div className={styles.poMaterialRow}>
+                  <span className={styles.poMaterialName}>Downspout Color</span>
+                  <span className={styles.poMaterialQty}>--</span>
+                  <span className={styles.poMaterialColor}>{materials.colors.downspoutColor}</span>
+                </div>
+                <div className={styles.poMaterialRow}>
+                  <span className={styles.poMaterialName}>Gutter Coil 15&quot;</span>
+                  <span className={styles.poMaterialQty}>{formatNumber(materials.gutterCoil.totalFt)} ft</span>
+                  <span className={styles.poMaterialColor}>{materials.gutterCoil.color} ({formatNumber(materials.gutterCoil.totalLbs, 3)} lbs)</span>
+                </div>
+                <div className={styles.poMaterialRow}>
+                  <span className={styles.poMaterialName}>Right End Caps - 6&quot; K-Style</span>
+                  <span className={styles.poMaterialQty}>{formatNumber(materials.endCaps.right.qty)}</span>
+                  <span className={styles.poMaterialColor}>{materials.endCaps.right.color}</span>
+                </div>
+                <div className={styles.poMaterialRow}>
+                  <span className={styles.poMaterialName}>Left End Caps - 6&quot; K-Style</span>
+                  <span className={styles.poMaterialQty}>{formatNumber(materials.endCaps.left.qty)}</span>
+                  <span className={styles.poMaterialColor}>{materials.endCaps.left.color}</span>
+                </div>
+                <div className={styles.poMaterialRow}>
+                  <span className={styles.poMaterialName}>3&quot; x 4&quot; Downpipe 10&apos;ft</span>
+                  <span className={styles.poMaterialQty}>{formatNumber(materials.downpipe.qty)}</span>
+                  <span className={styles.poMaterialColor}>{materials.downpipe.color}</span>
+                </div>
+                <div className={styles.poMaterialRow}>
+                  <span className={styles.poMaterialName}>3&quot; x 4&quot; - 6&quot; One Piece Offset</span>
+                  <span className={styles.poMaterialQty}>{formatNumber(materials.onePieceOffset.qty)}</span>
+                  <span className={styles.poMaterialColor}>{materials.onePieceOffset.color}</span>
+                </div>
+                <div className={styles.poMaterialRow}>
+                  <span className={styles.poMaterialName}>3&quot; x 4&quot; -(A) Elbow</span>
+                  <span className={styles.poMaterialQty}>{formatNumber(materials.elbow.qty)}</span>
+                  <span className={styles.poMaterialColor}>{materials.elbow.color}</span>
+                </div>
+                <div className={styles.poMaterialRow}>
+                  <span className={styles.poMaterialName}>Spray Paint for Touch up</span>
+                  <span className={styles.poMaterialQty}>
+                    <Form.Control size="sm" type="number" min="0" step="1" className={styles.poInlineInput} value={manualInputs.sprayPaintQty} onChange={(e) => handleManualInputChange("sprayPaintQty", e.target.value)} />
+                  </span>
+                  <span className={styles.poMaterialColor}>{materials.sprayPaint.color}</span>
+                </div>
+                <div className={styles.poMaterialRow}>
+                  <span className={styles.poMaterialName}>#8 x 1/2&quot; Zip Screws</span>
+                  <span className={styles.poMaterialQty}>
+                    <Form.Control size="sm" type="number" min="0" step="1" className={styles.poInlineInput} value={manualInputs.zipScrewsQty} onChange={(e) => handleManualInputChange("zipScrewsQty", e.target.value)} />
+                  </span>
+                  <span className={styles.poMaterialColor}>{materials.zipScrews.color}</span>
+                </div>
+                <div className={styles.poMaterialRow}>
+                  <span className={styles.poMaterialName}>#8 x 1/2&quot; Zip Screws</span>
+                  <span className={styles.poMaterialQty}>{formatNumber(materials.internal.internalScrews)}</span>
+                  <span className={styles.poMaterialColor}>Internal Use Only</span>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
 
-      <Card className="mb-3" header={<span className="fw-bold text-danger">Internal Information (Do Not Print)</span>}>
-        <Table size="sm" bordered>
-          <thead>
-            <tr>
-              <th style={{ width: "60%" }}>Field</th>
-              <th style={{ width: "40%" }}>Value</th>
-            </tr>
-          </thead>
-          <tbody>
-            <tr><td>Total Downspouts</td><td>{formatNumber(materials.internal.totalDownspouts)}</td></tr>
-            <tr><td>Total Endcaps</td><td>{formatNumber(materials.internal.totalEndcaps)}</td></tr>
-            <tr><td>3&quot; x 4&quot; Rectangular Outlets</td><td>{formatNumber(materials.internal.rectangularOutlets)}</td></tr>
-            <tr><td>Qty of Screws (Internal Use Only)</td><td>{formatNumber(materials.internal.internalScrews)}</td></tr>
-            <tr><td>6&quot; Hidden Hangers</td><td>{formatNumber(materials.internal.hiddenHangers)}</td></tr>
-            <tr>
-              <td>Box of Metal to Metal Screws for Hangers</td>
-              <td><Form.Control size="sm" type="number" min="0" step="1" value={manualInputs.boxScrewsQty} onChange={(e) => handleManualInputChange("boxScrewsQty", e.target.value)} /></td>
-            </tr>
-          </tbody>
-        </Table>
-      </Card>
+        {/* ─── Sidebar ─── */}
+        <div className={styles.poSidebar}>
 
-      <div className="d-flex gap-2 mb-4">
-        <Button variant="success" onClick={handleSave} disabled={saving} loading={saving}>
-          {saving ? "Saving..." : "Save Purchase Order"}
-        </Button>
-        {header.request_link && (
-          <Button variant="secondary" onClick={() => window.open(header.request_link, "_blank", "noopener,noreferrer")}>
-            Open Source Sheet
-          </Button>
-        )}
+          {/* Internal Information */}
+          <div className={`${styles.poSection} ${styles.poSectionInternal}`}>
+            <div className={`${styles.poSectionHeader} ${styles.poSectionHeaderDanger}`}>
+              <FontAwesomeIcon icon={faTriangleExclamation} /> Internal (Do Not Print)
+            </div>
+            <div className={styles.poSectionBody}>
+              <div className={styles.poInternalList}>
+                <div className={styles.poInternalRow}>
+                  <span className={styles.poInternalLabel}>Total Downspouts</span>
+                  <span className={styles.poInternalValue}>{formatNumber(materials.internal.totalDownspouts)}</span>
+                </div>
+                <div className={styles.poInternalRow}>
+                  <span className={styles.poInternalLabel}>Total Endcaps</span>
+                  <span className={styles.poInternalValue}>{formatNumber(materials.internal.totalEndcaps)}</span>
+                </div>
+                <div className={styles.poInternalRow}>
+                  <span className={styles.poInternalLabel}>3&quot; x 4&quot; Rectangular Outlets</span>
+                  <span className={styles.poInternalValue}>{formatNumber(materials.internal.rectangularOutlets)}</span>
+                </div>
+                <div className={styles.poInternalRow}>
+                  <span className={styles.poInternalLabel}>Qty of Screws (Internal)</span>
+                  <span className={styles.poInternalValue}>{formatNumber(materials.internal.internalScrews)}</span>
+                </div>
+                <div className={styles.poInternalRow}>
+                  <span className={styles.poInternalLabel}>6&quot; Hidden Hangers</span>
+                  <span className={styles.poInternalValue}>{formatNumber(materials.internal.hiddenHangers)}</span>
+                </div>
+                <div className={styles.poInternalRow}>
+                  <span className={styles.poInternalLabel}>Box Metal Screws (Hangers)</span>
+                  <span className={styles.poInternalValue}>
+                    <Form.Control size="sm" type="number" min="0" step="1" className={styles.poInlineInput} value={manualInputs.boxScrewsQty} onChange={(e) => handleManualInputChange("boxScrewsQty", e.target.value)} />
+                  </span>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
       </div>
-    </Container>
+    </div>
   );
 }
