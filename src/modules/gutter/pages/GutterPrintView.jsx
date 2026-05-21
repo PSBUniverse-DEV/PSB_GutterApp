@@ -1,11 +1,13 @@
 "use client";
 
-import { useState, useMemo, useEffect } from "react";
+import { useState, useMemo, useEffect, useCallback } from "react";
 import Link from "next/link";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
-import { faArrowLeft, faPrint } from "@fortawesome/free-solid-svg-icons";
+import { faArrowLeft, faPrint, faDownload } from "@fortawesome/free-solid-svg-icons";
 import { faFileLines, faNoteSticky, faRectangleList } from "@fortawesome/free-regular-svg-icons";
 import { Button } from "@/shared/components/ui";
+import { pdf } from "@react-pdf/renderer";
+import { QuotePdf, WorkOrderPdf, PurchaseOrderPdf } from "./GutterPdfDocuments";
 import {
   calculateQuote, calculateMaterials, formatCurrency,
   normalizeStatuses, normalizeColors, normalizeManufacturers,
@@ -27,6 +29,7 @@ const fmtInt = (v) => (v === null || v === undefined) ? "—" : String(Math.roun
 
 export default function GutterPrintView({ projectId, projectData, setup, storedPurchaseOrder }) {
   const [activeTab, setActiveTab] = useState("quote");
+  const [generating, setGenerating] = useState(false);
 
   // Hide app chrome (header/padding) — direct DOM override needed to beat Bootstrap !important
   useEffect(() => {
@@ -44,8 +47,8 @@ export default function GutterPrintView({ projectId, projectData, setup, storedP
   }, []);
 
   const header = projectData?.projectHeader || null;
-  const sides = projectData?.projectSides || [];
-  const extras = projectData?.projectExtras || [];
+  const sides = useMemo(() => projectData?.projectSides || [], [projectData]);
+  const extras = useMemo(() => projectData?.projectExtras || [], [projectData]);
 
   // Normalize setup
   const statuses = useMemo(() => normalizeStatuses(setup?.statuses), [setup]);
@@ -111,6 +114,63 @@ export default function GutterPrintView({ projectId, projectData, setup, storedP
     });
   }, [sides, colors, quoteResult]);
 
+  // Generate PDF and open in new tab
+  const handleGeneratePdf = useCallback(async () => {
+    if (generating) return;
+    setGenerating(true);
+    try {
+      let doc;
+      if (activeTab === "quote") {
+        doc = (
+          <QuotePdf
+            header={header}
+            quoteResult={quoteResult}
+            companyProfile={companyProfile}
+            displayDate={displayDate}
+            selectedManufacturerName={selectedManufacturerName}
+            selectedLeafGuardName={selectedLeafGuardName}
+            sectionBreakdownRows={sectionBreakdownRows}
+            extras={extras}
+          />
+        );
+      } else if (activeTab === "work-order") {
+        doc = (
+          <WorkOrderPdf
+            header={header}
+            sides={sides}
+            materials={materials}
+            companyProfile={companyProfile}
+          />
+        );
+      } else {
+        doc = (
+          <PurchaseOrderPdf
+            header={header}
+            materials={materials}
+            storedPurchaseOrder={storedPurchaseOrder}
+          />
+        );
+      }
+      const blob = await pdf(doc).toBlob();
+      const url = URL.createObjectURL(blob);
+      // Build filename: Type_Customer_ProjectName_Date.pdf
+      const tabLabel = activeTab === "quote" ? "Quote" : activeTab === "work-order" ? "WorkOrder" : "PurchaseOrder";
+      const customer = (header.customer || "").replace(/[^a-zA-Z0-9]/g, "_").replace(/_+/g, "_").replace(/^_|_$/g, "");
+      const project = (header.project_name || "").replace(/[^a-zA-Z0-9]/g, "_").replace(/_+/g, "_").replace(/^_|_$/g, "");
+      const date = (header.date || "").replace(/\//g, "-");
+      const filename = [tabLabel, customer, project, date].filter(Boolean).join("_") + ".pdf";
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = filename;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+    } finally {
+      setGenerating(false);
+    }
+  }, [generating, activeTab, header, quoteResult, companyProfile, displayDate, selectedManufacturerName, selectedLeafGuardName, sectionBreakdownRows, extras, sides, materials, storedPurchaseOrder]);
+
   if (!header) {
     return <div className={styles.printPage}><p>Project not found.</p></div>;
   }
@@ -133,8 +193,9 @@ export default function GutterPrintView({ projectId, projectData, setup, storedP
             </button>
           ))}
         </div>
-        <Button variant="secondary" onClick={() => window.print()}>
-          <FontAwesomeIcon icon={faPrint} className="me-1" /> Print / PDF
+        <Button variant="secondary" onClick={handleGeneratePdf} disabled={generating}>
+          <FontAwesomeIcon icon={generating ? faDownload : faPrint} className="me-1" />
+          {generating ? "Generating…" : "Download PDF"}
         </Button>
       </div>
 

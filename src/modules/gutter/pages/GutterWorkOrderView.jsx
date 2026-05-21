@@ -4,13 +4,13 @@ import { useState, useMemo } from "react";
 import Link from "next/link";
 import { Container, Row, Col, Form } from "react-bootstrap";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
-import { faArrowLeft, faCheck, faPrint, faRulerCombined, faBoxOpen, faSignsPost } from "@fortawesome/free-solid-svg-icons";
+import { faArrowLeft, faPrint, faRulerCombined, faBoxOpen, faSignsPost } from "@fortawesome/free-solid-svg-icons";
 import { faBuilding, faPenToSquare, faIdBadge, faNoteSticky } from "@fortawesome/free-regular-svg-icons";
-import { Button, toastInfo } from "@/shared/components/ui";
-import { calculateMaterials } from "../data/gutter.data";
+import { Button } from "@/shared/components/ui";
+import { calculateMaterials, calculateQuote } from "../data/gutter.data";
 import styles from "./GutterWorkOrder.module.css";
 
-const MAX_SIZE_ROWS = 4;
+const MAX_SIZE_ROWS = 10;
 const MAX_DSP_ROWS = 8;
 
 const toDisplay = (value) => {
@@ -30,7 +30,7 @@ const toDecimalDisplay = (value, digits = 2) => {
   return parsed.toLocaleString("en-US", { minimumFractionDigits: 0, maximumFractionDigits: digits });
 };
 
-export default function GutterWorkOrderView({ projectId, projectData }) {
+export default function GutterWorkOrderView({ projectId, projectData, manufacturerName }) {
   const header = projectData?.projectHeader || null;
   const sides = projectData?.projectSides || [];
   const colors = projectData?.colors || [];
@@ -73,14 +73,15 @@ export default function GutterWorkOrderView({ projectId, projectData }) {
   }, [sections]);
 
   const sectionRows = useMemo(() => {
-    const rows = sections.slice(0, MAX_SIZE_ROWS).map((s) => ({
-      length: s.length,
-      height: s.height,
+    return sections.map((sec, i) => ({
+      index: i + 1,
+      length: sec.length,
+      height: sec.height,
+      sides: sec.sides,
+      gutterColor: sec.gutterColor,
+      downspoutColor: sec.downspoutColor,
+      downspoutQty: sec.downspoutQty,
     }));
-    while (rows.length < MAX_SIZE_ROWS) {
-      rows.push({ length: "", height: "" });
-    }
-    return rows;
   }, [sections]);
 
   const dspRows = useMemo(() => Array.from({ length: MAX_DSP_ROWS }, (_, i) => i + 1), []);
@@ -93,10 +94,6 @@ export default function GutterWorkOrderView({ projectId, projectData }) {
       next[index] = value;
       return { ...prev, downspoutAssignments: next };
     });
-  };
-
-  const saveWorkOrder = () => {
-    toastInfo("Work-order notes are not persisted yet — no dedicated work-order table exists.", "Work Order");
   };
 
   if (!header) return <Container className="py-4">Project not found.</Container>;
@@ -132,9 +129,6 @@ export default function GutterWorkOrderView({ projectId, projectData }) {
           <Button variant="secondary" onClick={() => window.open(`/gutter/${projectId}/print`, "_blank")}>
             <FontAwesomeIcon icon={faPrint} className="me-1" /> Print
           </Button>
-          <Button variant="success" onClick={saveWorkOrder}>
-            <FontAwesomeIcon icon={faCheck} className="me-1" /> Save
-          </Button>
         </div>
       </div>
 
@@ -164,33 +158,58 @@ export default function GutterWorkOrderView({ projectId, projectData }) {
                     <span className={styles.woConfigLabel}>Downspout Color</span>
                     <span className={styles.woConfigValue}>{materials?.colors?.downspoutColor || "--"}</span>
                   </div>
+                  <div className={styles.woConfigItem}>
+                    <span className={styles.woConfigLabel}>Manufacturer</span>
+                    <span className={styles.woConfigValue}>{manufacturerName || "--"}</span>
+                  </div>
                 </div>
               </div>
             </div>
           </div>
 
-          {/* Measurements */}
+          {/* Gutter & Downspout Sections */}
           <div className={styles.woSection}>
             <div className={styles.woSectionHeader}>
-              <FontAwesomeIcon icon={faRulerCombined} /> Measurements
+              <FontAwesomeIcon icon={faRulerCombined} /> Gutter &amp; Downspout Sections
             </div>
             <div className={styles.woSectionBody}>
-              <div className={styles.woMeasureGrid}>
-                {sectionRows.map((row, index) => (
-                  <div key={`section-${index}`} className={styles.woMeasureRow}>
-                    <span className={styles.woMeasureLabel}>#{index + 1}</span>
-                    <span className={styles.woMeasureSize}>{workOrder.gutterSize}</span>
-                    <div className={styles.woMeasureField}>
-                      <span className={styles.woMeasureFieldLabel}>L</span>
-                      <span className={styles.woMeasureFieldValue}>{toDisplay(row.length) || "—"}</span>
+              {sectionRows.map((row) => (
+                <div key={row.index} className={styles.woSectionCard}>
+                  <div className={styles.woSectionCardTitle}>Section {row.index}</div>
+                  <div className={styles.woSectionCardGrid}>
+                    <div className={styles.woSectionCardGroup}>
+                      <div className={styles.woSectionCardGroupLabel}>Gutter</div>
+                      <div className={styles.woSectionCardRow}>
+                        <span className={styles.woSectionCardLabel}>Color</span>
+                        <span className={styles.woSectionCardValue}>{row.gutterColor}</span>
+                      </div>
+                      <div className={styles.woSectionCardRow}>
+                        <span className={styles.woSectionCardLabel}>Sides</span>
+                        <span className={styles.woSectionCardValue}>{toDisplay(row.sides) || "—"}</span>
+                      </div>
+                      <div className={styles.woSectionCardRow}>
+                        <span className={styles.woSectionCardLabel}>Length (LF)</span>
+                        <span className={styles.woSectionCardValue}>{toDisplay(row.length) || "—"}</span>
+                      </div>
+                      <div className={styles.woSectionCardRow}>
+                        <span className={styles.woSectionCardLabel}>Height (FT)</span>
+                        <span className={styles.woSectionCardValue}>{toDisplay(row.height) || "—"}</span>
+                      </div>
                     </div>
-                    <div className={styles.woMeasureField}>
-                      <span className={styles.woMeasureFieldLabel}>H</span>
-                      <span className={styles.woMeasureFieldValue}>{toDisplay(row.height) || "—"}</span>
+                    <div className={styles.woSectionCardGroup}>
+                      <div className={styles.woSectionCardGroupLabel}>Downspout</div>
+                      <div className={styles.woSectionCardRow}>
+                        <span className={styles.woSectionCardLabel}>Color</span>
+                        <span className={styles.woSectionCardValue}>{row.downspoutColor}</span>
+                      </div>
+                      <div className={styles.woSectionCardRow}>
+                        <span className={styles.woSectionCardLabel}>Quantity</span>
+                        <span className={styles.woSectionCardValue}>{toDisplay(row.downspoutQty) || "—"}</span>
+                      </div>
                     </div>
                   </div>
-                ))}
-              </div>
+                </div>
+              ))}
             </div>
           </div>
 
@@ -200,53 +219,36 @@ export default function GutterWorkOrderView({ projectId, projectData }) {
               <FontAwesomeIcon icon={faBoxOpen} /> Material Summary
             </div>
             <div className={styles.woSectionBody}>
-              <div className={styles.woMaterialList}>
-                <div className={`${styles.woMaterialRow} ${styles.woMaterialRowHeader}`}>
-                  <span className={styles.woMaterialName}>Item</span>
-                  <span className={styles.woMaterialQty}>QTY</span>
-                  <span className={styles.woMaterialColor}>Color</span>
-                </div>
-                <div className={styles.woMaterialRow}>
-                  <span className={styles.woMaterialName}>Gutter Coil 15&quot; (Ft / Lbs)</span>
-                  <span className={styles.woMaterialQty}>{toDecimalDisplay(materials?.gutterCoil?.totalFt)}</span>
-                  <span className={styles.woMaterialColor}>{toDecimalDisplay(materials?.gutterCoil?.totalLbs)} / {materials?.gutterCoil?.color || "--"}</span>
-                </div>
-                <div className={styles.woMaterialRow}>
-                  <span className={styles.woMaterialName}>Right End Caps - 6&quot; K-Style</span>
-                  <span className={styles.woMaterialQty}>{toWholeDisplay(materials?.endCaps?.right?.qty)}</span>
-                  <span className={styles.woMaterialColor}>{materials?.endCaps?.right?.color || "--"}</span>
-                </div>
-                <div className={styles.woMaterialRow}>
-                  <span className={styles.woMaterialName}>Left End Caps - 6&quot; K-Style</span>
-                  <span className={styles.woMaterialQty}>{toWholeDisplay(materials?.endCaps?.left?.qty)}</span>
-                  <span className={styles.woMaterialColor}>{materials?.endCaps?.left?.color || "--"}</span>
-                </div>
-                <div className={styles.woMaterialRow}>
-                  <span className={styles.woMaterialName}>3&quot; x 4&quot; Downpipe 10&apos;ft</span>
-                  <span className={styles.woMaterialQty}>{toWholeDisplay(materials?.downpipe?.qty)}</span>
-                  <span className={styles.woMaterialColor}>{materials?.downpipe?.color || "--"}</span>
-                </div>
-                <div className={styles.woMaterialRow}>
-                  <span className={styles.woMaterialName}>3&quot; x 4&quot; - 6&quot; One Piece Offset</span>
-                  <span className={styles.woMaterialQty}>{toWholeDisplay(materials?.onePieceOffset?.qty)}</span>
-                  <span className={styles.woMaterialColor}>{materials?.onePieceOffset?.color || "--"}</span>
-                </div>
-                <div className={styles.woMaterialRow}>
-                  <span className={styles.woMaterialName}>3&quot; x 4&quot; -(A) Elbow</span>
-                  <span className={styles.woMaterialQty}>{toWholeDisplay(materials?.elbow?.qty)}</span>
-                  <span className={styles.woMaterialColor}>{materials?.elbow?.color || "--"}</span>
-                </div>
-                <div className={styles.woMaterialRow}>
-                  <span className={styles.woMaterialName}>#8 x 1/2&quot; Zip Screws</span>
-                  <span className={styles.woMaterialQty}>{toWholeDisplay(materials?.zipScrews?.qty)}</span>
-                  <span className={styles.woMaterialColor}>{materials?.zipScrews?.color || "--"}</span>
-                </div>
-                <div className={styles.woMaterialRow}>
-                  <span className={styles.woMaterialName}>6&quot; Hidden Hangers</span>
-                  <span className={styles.woMaterialQty}>{toWholeDisplay(materials?.internal?.hiddenHangers)}</span>
-                  <span className={styles.woMaterialColor}>Auto</span>
-                </div>
-              </div>
+              {/* Gutter Coil */}
+              <table className={styles.woTable}>
+                <thead>
+                  <tr><th>Item</th><th>FT</th><th>LBS</th><th>Color</th></tr>
+                </thead>
+                <tbody>
+                  <tr>
+                    <td>Gutter Coil 15&quot;</td>
+                    <td>{toDecimalDisplay(materials?.gutterCoil?.totalFt)}</td>
+                    <td>{toDecimalDisplay(materials?.gutterCoil?.totalLbs)}</td>
+                    <td>{materials?.gutterCoil?.color || "--"}</td>
+                  </tr>
+                </tbody>
+              </table>
+
+              {/* Parts */}
+              <table className={styles.woTable} style={{ marginTop: "10px" }}>
+                <thead>
+                  <tr><th>Item</th><th>QTY</th><th>Color</th></tr>
+                </thead>
+                <tbody>
+                  <tr><td>Right End Caps - 6&quot; K-Style</td><td>{toWholeDisplay(materials?.endCaps?.right?.qty)}</td><td>{materials?.endCaps?.right?.color || "--"}</td></tr>
+                  <tr><td>Left End Caps - 6&quot; K-Style</td><td>{toWholeDisplay(materials?.endCaps?.left?.qty)}</td><td>{materials?.endCaps?.left?.color || "--"}</td></tr>
+                  <tr><td>#8 x 1/2&quot; Zip Screws</td><td>{toWholeDisplay(materials?.zipScrews?.qty)}</td><td>{materials?.zipScrews?.color || "--"}</td></tr>
+                  <tr><td>3&quot; x 4&quot; Downpipe 10&apos;ft</td><td>{toWholeDisplay(materials?.downpipe?.qty)}</td><td>{materials?.downpipe?.color || "--"}</td></tr>
+                  <tr><td>3&quot; x 4&quot; - 6&quot; One Piece Offset</td><td>{toWholeDisplay(materials?.onePieceOffset?.qty)}</td><td>{materials?.onePieceOffset?.color || "--"}</td></tr>
+                  <tr><td>3&quot; x 4&quot; -(A) Elbow</td><td>{toWholeDisplay(materials?.elbow?.qty)}</td><td>{materials?.elbow?.color || "--"}</td></tr>
+                  <tr><td>6&quot; Hidden Hangers</td><td>{toWholeDisplay(materials?.internal?.hiddenHangers)}</td><td>Auto</td></tr>
+                </tbody>
+              </table>
             </div>
           </div>
 

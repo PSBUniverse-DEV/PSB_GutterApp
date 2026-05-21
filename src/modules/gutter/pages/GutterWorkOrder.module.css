@@ -263,7 +263,105 @@
   min-width: 24px;
 }
 
+/* ─── Gutter & Downspout Section Cards ─── */
+
+.woSectionCard {
+  padding: 8px 10px;
+  margin-bottom: 6px;
+  background: var(--psb-bg);
+  border: 1px solid var(--psb-border);
+  border-radius: var(--psb-radius-6);
+}
+
+.woSectionCardTitle {
+  font-size: 11px;
+  font-weight: 700;
+  color: var(--psb-brand);
+  margin-bottom: 6px;
+  text-transform: uppercase;
+  letter-spacing: 0.3px;
+}
+
+.woSectionCardGrid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+}
+
+.woSectionCardGroup {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.woSectionCardGroupLabel {
+  font-size: 10px;
+  font-weight: 700;
+  text-transform: uppercase;
+  color: var(--psb-muted);
+  margin-bottom: 2px;
+  border-bottom: 1px solid var(--psb-border);
+  padding-bottom: 2px;
+}
+
+.woSectionCardRow {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 1px 0;
+}
+
+.woSectionCardLabel {
+  font-size: 10px;
+  color: var(--psb-muted);
+}
+
+.woSectionCardValue {
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--psb-text);
+}
+
 /* ─── Material Summary ─── */
+
+.woTable {
+  width: 100%;
+  border-collapse: collapse;
+  font-family: var(--psb-font-primary);
+  font-size: 12px;
+}
+
+.woTable th {
+  font-size: 10px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.3px;
+  color: var(--psb-muted);
+  padding: 6px 8px;
+  text-align: left;
+  border-bottom: 1px solid var(--psb-border);
+}
+
+.woTable th:nth-child(n+2) {
+  text-align: right;
+}
+
+.woTable td {
+  padding: 7px 8px;
+  border-bottom: 1px solid var(--psb-border);
+  color: var(--psb-ink);
+  font-size: 12px;
+  font-weight: 500;
+}
+
+.woTable td:nth-child(n+2) {
+  text-align: right;
+  font-weight: 700;
+}
+
+.woTable tbody tr:last-child td {
+  border-bottom: none;
+}
 
 .woMaterialList {
   display: flex;
