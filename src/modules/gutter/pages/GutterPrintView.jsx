@@ -276,66 +276,6 @@ function QuoteDocument({ header, project, quoteResult, companyProfile, displayDa
         </div>
       </div>
 
-      {/* Pricing Summary */}
-      <div className={styles.docSection}>
-        <h3 className={styles.docSectionTitle}>Pricing Summary</h3>
-        <table className={styles.docPricingTable}>
-          <tbody>
-            <tr>
-              <td>Gutter k Style 6 Inch</td>
-              <td className={styles.docPriceValue}>{fmtCurrency(pricing.materialCost)}</td>
-            </tr>
-            <tr className={styles.docPriceSubline}>
-              <td colSpan={2}>Total Gutter: {fmtNum(pricing.totalGutter)} FT</td>
-            </tr>
-            <tr>
-              <td>3x4 Downspouts</td>
-              <td className={styles.docPriceValue}>{fmtCurrency(pricing.downspoutCost)}</td>
-            </tr>
-            <tr className={styles.docPriceSubline}>
-              <td colSpan={2}>Total Downspout: {fmtNum(pricing.totalDownspouts)} FT</td>
-            </tr>
-            {Number(pricing.leafGuardCost || 0) > 0 && (
-              <tr><td>Leaf Guard</td><td className={styles.docPriceValue}>{fmtCurrency(pricing.leafGuardCost)}</td></tr>
-            )}
-            {Number(pricing.tripFeePrice || 0) > 0 && (
-              <tr><td>Trip Fee</td><td className={styles.docPriceValue}>{fmtCurrency(pricing.tripFeePrice)}</td></tr>
-            )}
-            {Number(pricing.extrasPrice || 0) > 0 && (
-              <tr><td>Extras</td><td className={styles.docPriceValue}>{fmtCurrency(pricing.extrasPrice)}</td></tr>
-            )}
-          </tbody>
-          <tfoot>
-            <tr className={styles.docPriceSubtotal}>
-              <td>Subtotal</td>
-              <td className={styles.docPriceValue}>{fmtCurrency(pricing.subtotal)}</td>
-            </tr>
-            {hasDiscount && (
-              <tr className={styles.docPriceDiscount}>
-                <td>Discount ({(pricing.discountPercent * 100).toFixed(1)}%)</td>
-                <td className={styles.docPriceValue}>-{fmtCurrency(pricing.discountAmount)}</td>
-              </tr>
-            )}
-            <tr className={styles.docPriceTotal}>
-              <td>Project Total</td>
-              <td className={styles.docPriceValue}>{fmtCurrency(pricing.projectTotal)}</td>
-            </tr>
-            {hasDeposit && (
-              <>
-                <tr>
-                  <td>Deposit ({pricing.depositPercentDisplay}%)</td>
-                  <td className={styles.docPriceValue}>{fmtCurrency(pricing.depositAmount)}</td>
-                </tr>
-                <tr className={styles.docPriceBalance}>
-                  <td>Remaining Balance</td>
-                  <td className={styles.docPriceValue}>{fmtCurrency(pricing.remainingBalance)}</td>
-                </tr>
-              </>
-            )}
-          </tfoot>
-        </table>
-      </div>
-
       {/* Material Breakdown */}
       {sectionBreakdownRows.length > 0 && (
         <div className={styles.docSection}>
@@ -421,6 +361,66 @@ function QuoteDocument({ header, project, quoteResult, companyProfile, displayDa
           )}
         </div>
       )}
+
+      {/* Pricing Summary */}
+      <div className={styles.docSection}>
+        <h3 className={styles.docSectionTitle}>Pricing Summary</h3>
+        <table className={styles.docPricingTable}>
+          <tbody>
+            <tr>
+              <td>Gutter k Style 6 Inch</td>
+              <td className={styles.docPriceValue}>{fmtCurrency(pricing.materialCost)}</td>
+            </tr>
+            <tr className={styles.docPriceSubline}>
+              <td colSpan={2}>Total Gutter: {fmtNum(pricing.totalGutter)} FT</td>
+            </tr>
+            <tr>
+              <td>3x4 Downspouts</td>
+              <td className={styles.docPriceValue}>{fmtCurrency(pricing.downspoutCost)}</td>
+            </tr>
+            <tr className={styles.docPriceSubline}>
+              <td colSpan={2}>Total Downspout: {fmtNum(pricing.totalDownspouts)} FT</td>
+            </tr>
+            {Number(pricing.leafGuardCost || 0) > 0 && (
+              <tr><td>Leaf Guard</td><td className={styles.docPriceValue}>{fmtCurrency(pricing.leafGuardCost)}</td></tr>
+            )}
+            {Number(pricing.tripFeePrice || 0) > 0 && (
+              <tr><td>Trip Fee</td><td className={styles.docPriceValue}>{fmtCurrency(pricing.tripFeePrice)}</td></tr>
+            )}
+            {Number(pricing.extrasPrice || 0) > 0 && (
+              <tr><td>Extras</td><td className={styles.docPriceValue}>{fmtCurrency(pricing.extrasPrice)}</td></tr>
+            )}
+          </tbody>
+          <tfoot>
+            <tr className={styles.docPriceSubtotal}>
+              <td>Subtotal</td>
+              <td className={styles.docPriceValue}>{fmtCurrency(pricing.subtotal)}</td>
+            </tr>
+            {hasDiscount && (
+              <tr className={styles.docPriceDiscount}>
+                <td>Discount ({(pricing.discountPercent * 100).toFixed(1)}%)</td>
+                <td className={styles.docPriceValue}>-{fmtCurrency(pricing.discountAmount)}</td>
+              </tr>
+            )}
+            <tr className={styles.docPriceTotal}>
+              <td>Project Total</td>
+              <td className={styles.docPriceValue}>{fmtCurrency(pricing.projectTotal)}</td>
+            </tr>
+            {hasDeposit && (
+              <>
+                <tr>
+                  <td>Deposit ({pricing.depositPercentDisplay}%)</td>
+                  <td className={styles.docPriceValue}>{fmtCurrency(pricing.depositAmount)}</td>
+                </tr>
+                <tr className={styles.docPriceBalance}>
+                  <td>Remaining Balance</td>
+                  <td className={styles.docPriceValue}>{fmtCurrency(pricing.remainingBalance)}</td>
+                </tr>
+              </>
+            )}
+          </tfoot>
+        </table>
+      </div>
     </div>
   );
 }

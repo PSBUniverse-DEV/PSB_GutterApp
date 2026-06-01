@@ -128,50 +128,6 @@ export function QuotePdf({ header, quoteResult, companyProfile, displayDate, sel
           </View>
         </View>
 
-        {/* Pricing Summary */}
-        <View style={s.section}>
-          <Text style={s.sectionTitle}>Pricing Summary</Text>
-          <TableRow header cells={["Item", { text: "Amount", align: "right" }]} widths={priceW} />
-          <TableRow cells={["Gutter k Style 6 Inch", { text: fmtCurrency(pricing.materialCost), align: "right" }]} widths={priceW} />
-          <TableRow cells={[`  Total Gutter: ${fmtNum(pricing.totalGutter)} FT`, ""]} widths={priceW} style={{ borderBottomColor: "#eee" }} />
-          <TableRow cells={["3x4 Downspouts", { text: fmtCurrency(pricing.downspoutCost), align: "right" }]} widths={priceW} />
-          <TableRow cells={[`  Total Downspout: ${fmtNum(pricing.totalDownspouts)} FT`, ""]} widths={priceW} style={{ borderBottomColor: "#eee" }} />
-          {Number(pricing.leafGuardCost || 0) > 0 && (
-            <TableRow cells={["Leaf Guard", { text: fmtCurrency(pricing.leafGuardCost), align: "right" }]} widths={priceW} />
-          )}
-          {Number(pricing.tripFeePrice || 0) > 0 && (
-            <TableRow cells={["Trip Fee", { text: fmtCurrency(pricing.tripFeePrice), align: "right" }]} widths={priceW} />
-          )}
-          {Number(pricing.extrasPrice || 0) > 0 && (
-            <TableRow cells={["Extras", { text: fmtCurrency(pricing.extrasPrice), align: "right" }]} widths={priceW} />
-          )}
-          {/* Subtotal */}
-          <View style={s.subtotalRow}>
-            <Text style={[s.tdText, { width: priceW[0], fontFamily: "Helvetica-Bold" }]}>Subtotal</Text>
-            <Text style={[s.tdText, { width: priceW[1], textAlign: "right", fontFamily: "Helvetica-Bold" }]}>{fmtCurrency(pricing.subtotal)}</Text>
-          </View>
-          {hasDiscount && (
-            <View style={s.tableRow}>
-              <Text style={[s.tdText, s.discountText, { width: priceW[0] }]}>Discount ({(pricing.discountPercent * 100).toFixed(1)}%)</Text>
-              <Text style={[s.tdText, s.discountText, s.textRight, { width: priceW[1] }]}>-{fmtCurrency(pricing.discountAmount)}</Text>
-            </View>
-          )}
-          {/* Total */}
-          <View style={s.totalRow}>
-            <Text style={[s.totalText, { width: priceW[0] }]}>Project Total</Text>
-            <Text style={[s.totalText, s.textRight, { width: priceW[1] }]}>{fmtCurrency(pricing.projectTotal)}</Text>
-          </View>
-          {hasDeposit && (
-            <>
-              <TableRow cells={[`Deposit (${pricing.depositPercentDisplay}%)`, { text: fmtCurrency(pricing.depositAmount), align: "right" }]} widths={priceW} />
-              <View style={s.subtotalRow}>
-                <Text style={[s.tdText, { width: priceW[0], fontFamily: "Helvetica-Bold" }]}>Remaining Balance</Text>
-                <Text style={[s.tdText, { width: priceW[1], textAlign: "right", fontFamily: "Helvetica-Bold" }]}>{fmtCurrency(pricing.remainingBalance)}</Text>
-              </View>
-            </>
-          )}
-        </View>
-
         {/* Material Breakdown */}
         {sectionBreakdownRows.length > 0 && (
           <View style={s.section}>
@@ -219,6 +175,50 @@ export function QuotePdf({ header, quoteResult, companyProfile, displayDate, sel
             )}
           </View>
         )}
+
+        {/* Pricing Summary */}
+        <View style={s.section}>
+          <Text style={s.sectionTitle}>Pricing Summary</Text>
+          <TableRow header cells={["Item", { text: "Amount", align: "right" }]} widths={priceW} />
+          <TableRow cells={["Gutter k Style 6 Inch", { text: fmtCurrency(pricing.materialCost), align: "right" }]} widths={priceW} />
+          <TableRow cells={[`  Total Gutter: ${fmtNum(pricing.totalGutter)} FT`, ""]} widths={priceW} style={{ borderBottomColor: "#eee" }} />
+          <TableRow cells={["3x4 Downspouts", { text: fmtCurrency(pricing.downspoutCost), align: "right" }]} widths={priceW} />
+          <TableRow cells={[`  Total Downspout: ${fmtNum(pricing.totalDownspouts)} FT`, ""]} widths={priceW} style={{ borderBottomColor: "#eee" }} />
+          {Number(pricing.leafGuardCost || 0) > 0 && (
+            <TableRow cells={["Leaf Guard", { text: fmtCurrency(pricing.leafGuardCost), align: "right" }]} widths={priceW} />
+          )}
+          {Number(pricing.tripFeePrice || 0) > 0 && (
+            <TableRow cells={["Trip Fee", { text: fmtCurrency(pricing.tripFeePrice), align: "right" }]} widths={priceW} />
+          )}
+          {Number(pricing.extrasPrice || 0) > 0 && (
+            <TableRow cells={["Extras", { text: fmtCurrency(pricing.extrasPrice), align: "right" }]} widths={priceW} />
+          )}
+          {/* Subtotal */}
+          <View style={s.subtotalRow}>
+            <Text style={[s.tdText, { width: priceW[0], fontFamily: "Helvetica-Bold" }]}>Subtotal</Text>
+            <Text style={[s.tdText, { width: priceW[1], textAlign: "right", fontFamily: "Helvetica-Bold" }]}>{fmtCurrency(pricing.subtotal)}</Text>
+          </View>
+          {hasDiscount && (
+            <View style={s.tableRow}>
+              <Text style={[s.tdText, s.discountText, { width: priceW[0] }]}>Discount ({(pricing.discountPercent * 100).toFixed(1)}%)</Text>
+              <Text style={[s.tdText, s.discountText, s.textRight, { width: priceW[1] }]}>-{fmtCurrency(pricing.discountAmount)}</Text>
+            </View>
+          )}
+          {/* Total */}
+          <View style={s.totalRow}>
+            <Text style={[s.totalText, { width: priceW[0] }]}>Project Total</Text>
+            <Text style={[s.totalText, s.textRight, { width: priceW[1] }]}>{fmtCurrency(pricing.projectTotal)}</Text>
+          </View>
+          {hasDeposit && (
+            <>
+              <TableRow cells={[`Deposit (${pricing.depositPercentDisplay}%)`, { text: fmtCurrency(pricing.depositAmount), align: "right" }]} widths={priceW} />
+              <View style={s.subtotalRow}>
+                <Text style={[s.tdText, { width: priceW[0], fontFamily: "Helvetica-Bold" }]}>Remaining Balance</Text>
+                <Text style={[s.tdText, { width: priceW[1], textAlign: "right", fontFamily: "Helvetica-Bold" }]}>{fmtCurrency(pricing.remainingBalance)}</Text>
+              </View>
+            </>
+          )}
+        </View>
       </Page>
     </Document>
   );

@@ -214,6 +214,115 @@ export function mapHeaderToProject(header, sides, extras) {
   };
 }
 
+function normalizeSnapshotText(value) {
+  if (value === null || value === undefined) return "";
+  return String(value).trim();
+}
+
+function normalizeSnapshotNumber(value) {
+  const n = Number(value);
+  return Number.isFinite(n) ? n : 0;
+}
+
+function normalizeProjectForSnapshot(project) {
+  const p = project || {};
+  return {
+    projId: normalizeSnapshotText(p.projId),
+    statusId: normalizeSnapshotText(p.statusId),
+    requestLink: normalizeSnapshotText(p.requestLink),
+    customer: normalizeSnapshotText(p.customer),
+    date: normalizeSnapshotText(p.date),
+    projectName: normalizeSnapshotText(p.projectName),
+    projectAddress: normalizeSnapshotText(p.projectAddress),
+    manufacturerId: normalizeSnapshotText(p.manufacturerId),
+    manualManufacturerRateEnabled: Boolean(p.manualManufacturerRateEnabled),
+    manualManufacturerRate: normalizeSnapshotText(p.manualManufacturerRate),
+    tripId: normalizeSnapshotText(p.tripId),
+    manualTripRateEnabled: Boolean(p.manualTripRateEnabled),
+    manualTripRate: normalizeSnapshotText(p.manualTripRate),
+    sections: (Array.isArray(p.sections) ? p.sections : []).map((s) => ({
+      colorId: normalizeSnapshotText(s?.colorId),
+      downspoutColorId: normalizeSnapshotText(s?.downspoutColorId),
+      sides: normalizeSnapshotText(s?.sides),
+      length: normalizeSnapshotText(s?.length),
+      height: normalizeSnapshotText(s?.height),
+      downspoutQty: normalizeSnapshotText(s?.downspoutQty),
+    })),
+    leafGuardIncluded: Boolean(p.leafGuardIncluded),
+    leafGuardId: normalizeSnapshotText(p.leafGuardId),
+    manualLeafGuardRateEnabled: Boolean(p.manualLeafGuardRateEnabled),
+    manualLeafGuardRate: normalizeSnapshotText(p.manualLeafGuardRate),
+    extrasIncluded: Boolean(p.extrasIncluded),
+    extras: (Array.isArray(p.extras) ? p.extras : []).map((e) => ({
+      description: normalizeSnapshotText(e?.description),
+      qty: normalizeSnapshotText(e?.qty),
+      unitPrice: normalizeSnapshotText(e?.unitPrice),
+    })),
+    discountIncluded: Boolean(p.discountIncluded),
+    discountId: normalizeSnapshotText(p.discountId),
+    manualDiscountRateEnabled: Boolean(p.manualDiscountRateEnabled),
+    manualDiscountPercent: normalizeSnapshotText(p.manualDiscountPercent),
+    discountPercent: normalizeSnapshotText(p.discountPercent),
+    depositIncluded: Boolean(p.depositIncluded),
+    depositPercent: normalizeSnapshotText(p.depositPercent),
+  };
+}
+
+function normalizePricingForSnapshot(pricing) {
+  if (!pricing) return null;
+  const derived = pricing.derivedEndCaps || {};
+  return {
+    manufacturerRate: normalizeSnapshotNumber(pricing.manufacturerRate),
+    setupManufacturerRate: normalizeSnapshotNumber(pricing.setupManufacturerRate),
+    totalGutter: normalizeSnapshotNumber(pricing.totalGutter),
+    totalDownspouts: normalizeSnapshotNumber(pricing.totalDownspouts),
+    materialCost: normalizeSnapshotNumber(pricing.materialCost),
+    downspoutCost: normalizeSnapshotNumber(pricing.downspoutCost),
+    leafGuardUnitPrice: normalizeSnapshotNumber(pricing.leafGuardUnitPrice),
+    leafGuardCost: normalizeSnapshotNumber(pricing.leafGuardCost),
+    tripFeeLookup: normalizeSnapshotNumber(pricing.tripFeeLookup),
+    tripFeePrice: normalizeSnapshotNumber(pricing.tripFeePrice),
+    totalEndCaps: normalizeSnapshotNumber(pricing.totalEndCaps),
+    derivedEndCaps: {
+      group1: normalizeSnapshotNumber(derived.group1),
+      group2: normalizeSnapshotNumber(derived.group2),
+      rightEndCaps1: normalizeSnapshotNumber(derived.rightEndCaps1),
+      leftEndCaps1: normalizeSnapshotNumber(derived.leftEndCaps1),
+      rightEndCaps2: normalizeSnapshotNumber(derived.rightEndCaps2),
+      leftEndCaps2: normalizeSnapshotNumber(derived.leftEndCaps2),
+      total: normalizeSnapshotNumber(derived.total),
+      groups: (Array.isArray(derived.groups) ? derived.groups : []).map((g) => ({
+        index: normalizeSnapshotNumber(g?.index),
+        fromSide: normalizeSnapshotNumber(g?.fromSide),
+        toSide: normalizeSnapshotNumber(g?.toSide),
+        value: normalizeSnapshotNumber(g?.value),
+      })),
+    },
+    extrasPrice: normalizeSnapshotNumber(pricing.extrasPrice),
+    subtotal: normalizeSnapshotNumber(pricing.subtotal),
+    discountPercent: normalizeSnapshotNumber(pricing.discountPercent),
+    discountAmount: normalizeSnapshotNumber(pricing.discountAmount),
+    projectTotal: normalizeSnapshotNumber(pricing.projectTotal),
+    depositRate: normalizeSnapshotNumber(pricing.depositRate),
+    depositPercentDisplay: normalizeSnapshotNumber(pricing.depositPercentDisplay),
+    depositAmount: normalizeSnapshotNumber(pricing.depositAmount),
+    remainingBalance: normalizeSnapshotNumber(pricing.remainingBalance),
+    gutterQuantities: (Array.isArray(pricing.gutterQuantities) ? pricing.gutterQuantities : []).map(normalizeSnapshotNumber),
+    downspoutFootages: (Array.isArray(pricing.downspoutFootages) ? pricing.downspoutFootages : []).map(normalizeSnapshotNumber),
+    sectionGutterPrices: (Array.isArray(pricing.sectionGutterPrices) ? pricing.sectionGutterPrices : []).map(normalizeSnapshotNumber),
+    sectionDownspoutPrices: (Array.isArray(pricing.sectionDownspoutPrices) ? pricing.sectionDownspoutPrices : []).map(normalizeSnapshotNumber),
+  };
+}
+
+export function buildGutterProjectSnapshot(project, quoteSetup = {}) {
+  const normalizedProject = normalizeProjectForSnapshot(project);
+  const quote = calculateQuote(normalizedProject, quoteSetup);
+  return JSON.stringify({
+    project: normalizedProject,
+    pricing: normalizePricingForSnapshot(quote?.pricing || null),
+  });
+}
+
 // ─── Quote Calculation Engine ──────────────────────────────
 
 const CONST_GUTTER_EXTRA = 1;

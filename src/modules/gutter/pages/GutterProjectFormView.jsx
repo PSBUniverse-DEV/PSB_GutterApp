@@ -14,7 +14,7 @@ import {
   hasValue, asNumber, calculateQuote, formatCurrency, formatPercentLabel, toDisplayPercentValue,
   normalizeStatuses, normalizeColors, normalizeManufacturers, normalizeLeafGuards,
   normalizeTripRates, normalizeDiscounts,
-  createInitialProject, emptySection, emptyExtra, mapHeaderToProject,
+  createInitialProject, emptySection, emptyExtra, mapHeaderToProject, buildGutterProjectSnapshot,
 } from "../data/gutter.data";
 
 const MIN_SECTIONS = 1;
@@ -53,15 +53,7 @@ export default function GutterProjectFormView({ mode = "create", projectId = nul
     discounts: discounts.map((r) => ({ id: r.discount_id, percent: r.percentage })),
   }), [manufacturers, leafGuards, tripFeeRates, discounts]);
 
-  // ─── Warnings ──────────────────────────────────────────
-  useEffect(() => {
-    if (setup.sourceErrors?.length > 0) {
-      toastWarning(`Some setup sources failed: ${setup.sourceErrors.join(", ")}.`, "Gutter Setup");
-    }
-  }, [setup.sourceErrors]);
-
-  // ─── Project state ────────────────────────────────────
-  const [project, setProject] = useState(() => {
+  const buildInitialProject = useCallback(() => {
     if (isEdit && projectData?.projectHeader) {
       return mapHeaderToProject(projectData.projectHeader, projectData.projectSides || [], projectData.projectExtras || []);
     }
@@ -72,7 +64,20 @@ export default function GutterProjectFormView({ mode = "create", projectId = nul
       manufacturerId: String(manufacturers[0]?.manufacturer_id || ""),
       tripId: String(tripFeeRates[0]?.trip_id || ""),
     };
-  });
+  }, [isEdit, projectData, statuses, manufacturers, tripFeeRates]);
+
+  // ─── Warnings ──────────────────────────────────────────
+  useEffect(() => {
+    if (setup.sourceErrors?.length > 0) {
+      toastWarning(`Some setup sources failed: ${setup.sourceErrors.join(", ")}.`, "Gutter Setup");
+    }
+  }, [setup.sourceErrors]);
+
+  // ─── Project state ────────────────────────────────────
+  const [project, setProject] = useState(() => buildInitialProject());
+  const [baselineSnapshot, setBaselineSnapshot] = useState(() =>
+    buildGutterProjectSnapshot(buildInitialProject(), quoteSetup),
+  );
 
   const [saving, setSaving] = useState(false);
 
@@ -142,6 +147,12 @@ export default function GutterProjectFormView({ mode = "create", projectId = nul
     if (!project) return null;
     return calculateQuote(project, quoteSetup);
   }, [project, quoteSetup]);
+
+  const currentSnapshot = useMemo(
+    () => buildGutterProjectSnapshot(project, quoteSetup),
+    [project, quoteSetup],
+  );
+  const hasChanges = currentSnapshot !== baselineSnapshot;
 
   const selectedManufacturerName = useMemo(() => {
     const m = manufacturers.find((m) => String(m.manufacturer_id) === String(project?.manufacturerId));
@@ -271,6 +282,7 @@ export default function GutterProjectFormView({ mode = "create", projectId = nul
         extras: extraRows,
       });
 
+      setBaselineSnapshot(currentSnapshot);
       toastSuccess("Project saved.", "Gutter Project");
       if (!isEdit && result?.projId) {
         router.push(`/gutter/${result.projId}`);
@@ -282,7 +294,7 @@ export default function GutterProjectFormView({ mode = "create", projectId = nul
     } finally {
       setSaving(false);
     }
-  }, [project, isEdit, projectId, router]);
+  }, [project, isEdit, projectId, router, currentSnapshot]);
 
   // ─── Format helpers ────────────────────────────────────
   const fmt = (n) => typeof n === "number" ? n.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 }) : "—";
@@ -332,15 +344,22 @@ export default function GutterProjectFormView({ mode = "create", projectId = nul
           <Button variant="success" onClick={saveProject} disabled={saving} loading={saving}>
             <FontAwesomeIcon icon={faCheck} className="me-1" /> Save Project
           </Button>
-          {isEdit && (
+          {hasChanges && (
+            <span className="small text-danger fw-semibold align-self-center">
+              Unsaved changes: save to re-enable action buttons.
+            </span>
+          )}
+          {!hasChanges && isEdit && (
             <Button variant="outline-primary" onClick={() => router.push(`/gutter/${projectId}/work-order`)}>Work Order</Button>
           )}
-          {isEdit && (
+          {!hasChanges && isEdit && (
             <Button variant="outline-primary" onClick={() => router.push(`/gutter/${projectId}/purchase-order`)}>Purchase Order</Button>
           )}
-          <Button variant="secondary" onClick={() => router.push(`/gutter/${projectId}/print`)}>
-            <FontAwesomeIcon icon={faPrint} className="me-1" /> Print / PDF
-          </Button>
+          {!hasChanges && (
+            <Button variant="secondary" onClick={() => router.push(`/gutter/${projectId}/print`)}>
+              <FontAwesomeIcon icon={faPrint} className="me-1" /> Print / PDF
+            </Button>
+          )}
         </div>
       </div>
 
