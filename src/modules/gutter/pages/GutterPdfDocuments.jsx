@@ -97,6 +97,13 @@ export function QuotePdf({ header, quoteResult, companyProfile, displayDate, sel
 
   const hasDiscount = Number(pricing.discountAmount || 0) > 0;
   const hasDeposit = Number(pricing.depositPercentDisplay || 0) > 0;
+  const endCapsPerSide = (() => {
+    const groups = pricing?.derivedEndCaps?.groups;
+    if (Array.isArray(groups) && groups.length > 0) {
+      return groups.reduce((sum, g) => sum + (Number.isFinite(Number(g?.value)) ? Number(g.value) : 0), 0);
+    }
+    return (sectionBreakdownRows || []).reduce((sum, row) => sum + (Number.isFinite(Number(row?.sides)) ? Number(row.sides) : 0), 0);
+  })();
 
   const priceW = ["75%", "25%"];
 
@@ -155,8 +162,8 @@ export function QuotePdf({ header, quoteResult, companyProfile, displayDate, sel
             <Text style={s.subTitle}>End Caps Totals</Text>
             <TableRow header cells={["Right", "Left"]} widths={["50%", "50%"]} />
             <TableRow cells={[
-              fmtInt(pricing.derivedEndCaps?.right ?? pricing.totalEndCaps),
-              fmtInt(pricing.derivedEndCaps?.left ?? pricing.totalEndCaps),
+              fmtInt(endCapsPerSide),
+              fmtInt(endCapsPerSide),
             ]} widths={["50%", "50%"]} />
 
             {selectedLeafGuardName && <Text style={s.note}>Leaf Guard: {selectedLeafGuardName}</Text>}

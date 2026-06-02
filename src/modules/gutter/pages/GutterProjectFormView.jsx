@@ -736,6 +736,9 @@ export default function GutterProjectFormView({ mode = "create", projectId = nul
                         {Number(quoteResult.pricing.leafGuardCost || 0) > 0 && (
                           <div className="quote-price-row"><span>Leaf Guard</span><span className="quote-price-value" style={moneyValueStyle}>{fmtCurrency(quoteResult.pricing.leafGuardCost)}</span></div>
                         )}
+                        {Number(quoteResult.pricing.tripFeePrice || 0) > 0 && (
+                          <div className="quote-price-row"><span>Trip Fee</span><span className="quote-price-value" style={moneyValueStyle}>{fmtCurrency(quoteResult.pricing.tripFeePrice)}</span></div>
+                        )}
                         {Number(quoteResult.pricing.extrasPrice || 0) > 0 && (
                           <div className="quote-price-row"><span>Extras</span><span className="quote-price-value" style={moneyValueStyle}>{fmtCurrency(quoteResult.pricing.extrasPrice)}</span></div>
                         )}

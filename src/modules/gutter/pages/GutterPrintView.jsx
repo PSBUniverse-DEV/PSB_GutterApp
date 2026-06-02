@@ -243,6 +243,13 @@ function QuoteDocument({ header, project, quoteResult, companyProfile, displayDa
 
   const hasDiscount = Number(pricing.discountAmount || 0) > 0;
   const hasDeposit = Number(pricing.depositPercentDisplay || 0) > 0;
+  const endCapsPerSide = (() => {
+    const groups = pricing?.derivedEndCaps?.groups;
+    if (Array.isArray(groups) && groups.length > 0) {
+      return groups.reduce((sum, g) => sum + (Number.isFinite(Number(g?.value)) ? Number(g.value) : 0), 0);
+    }
+    return (sectionBreakdownRows || []).reduce((sum, row) => sum + (Number.isFinite(Number(row?.sides)) ? Number(row.sides) : 0), 0);
+  })();
 
   return (
     <div className={styles.printDocument}>
@@ -331,8 +338,8 @@ function QuoteDocument({ header, project, quoteResult, companyProfile, displayDa
             </thead>
             <tbody>
               <tr>
-                <td>{fmtInt(pricing.derivedEndCaps?.right ?? pricing.totalEndCaps)}</td>
-                <td>{fmtInt(pricing.derivedEndCaps?.left ?? pricing.totalEndCaps)}</td>
+                <td>{fmtInt(endCapsPerSide)}</td>
+                <td>{fmtInt(endCapsPerSide)}</td>
               </tr>
             </tbody>
           </table>
