@@ -10,7 +10,13 @@
 #
 # If everything is already set up, the script does nothing.
 
+# Resolve the project root (parent of the scripts/ folder)
+$scriptPath = Split-Path -Parent $MyInvocation.MyCommand.Path
+$projectRoot = Split-Path -Parent $scriptPath
+Set-Location $projectRoot
+
 Write-Host "`n=== PSBUniverse Setup ===" -ForegroundColor Cyan
+Write-Host "Project root: $projectRoot" -ForegroundColor DarkGray
 
 $allGood = $true
 
@@ -77,7 +83,9 @@ if (-not (Test-Path "node_modules")) {
 
 # ── 3. .env.local with SSO configuration ──────────────────────
 
-if (-not (Test-Path ".env.local")) {
+$envLocalPath = Join-Path $projectRoot ".env.local"
+
+if (-not (Test-Path $envLocalPath)) {
     Write-Host "`n[3/5] Creating .env.local template with SSO config..." -ForegroundColor Green
 
     $template = @"
@@ -112,8 +120,8 @@ NEXT_PUBLIC_CORE_PORTAL_URL=http://localhost:3000
 # Must match the app_id in psb_s_application.
 NEXT_PUBLIC_MODULE_ID=
 "@
-    $template | Set-Content -Path ".env.local" -Encoding UTF8
-    Write-Host "  .env.local created with placeholder values." -ForegroundColor Yellow
+    $template | Set-Content -Path $envLocalPath -Encoding UTF8
+    Write-Host "  .env.local created at: $envLocalPath" -ForegroundColor Yellow
     Write-Host "  IMPORTANT: Open .env.local and paste your real Supabase keys." -ForegroundColor Yellow
     Write-Host "  Ask your senior dev if you don't have them." -ForegroundColor Yellow
     $allGood = $false
@@ -128,7 +136,7 @@ Write-Host "`n[4/5] Validating SSO configuration..." -ForegroundColor Green
 $ssoIssues = @()
 
 # Check JWT_SECRET
-$jwtSecret = (Select-String -Path ".env.local" -Pattern "^JWT_SECRET=" 2>$null)
+$jwtSecret = (Select-String -Path $envLocalPath -Pattern "^JWT_SECRET=" 2>$null)
 if (-not $jwtSecret) {
     $ssoIssues += "JWT_SECRET is missing from .env.local"
 } elseif ($jwtSecret -match "your-secret-key-change-this-in-production") {
@@ -136,15 +144,15 @@ if (-not $jwtSecret) {
 }
 
 # Check NEXT_PUBLIC_COOKIE_DOMAIN
-$cookieDomain = (Select-String -Path ".env.local" -Pattern "^NEXT_PUBLIC_COOKIE_DOMAIN=" 2>$null)
+$cookieDomain = (Select-String -Path $envLocalPath -Pattern "^NEXT_PUBLIC_COOKIE_DOMAIN=" 2>$null)
 if (-not $cookieDomain) {
     $ssoIssues += "NEXT_PUBLIC_COOKIE_DOMAIN is missing from .env.local"
 }
 
 # Check Supabase keys
-$supabaseUrl = (Select-String -Path ".env.local" -Pattern "^NEXT_PUBLIC_SUPABASE_URL=" 2>$null)
-$supabaseKey = (Select-String -Path ".env.local" -Pattern "^NEXT_PUBLIC_SUPABASE_ANON_KEY=" 2>$null)
-$serviceKey = (Select-String -Path ".env.local" -Pattern "^SUPABASE_SERVICE_ROLE_KEY=" 2>$null)
+$supabaseUrl = (Select-String -Path $envLocalPath -Pattern "^NEXT_PUBLIC_SUPABASE_URL=" 2>$null)
+$supabaseKey = (Select-String -Path $envLocalPath -Pattern "^NEXT_PUBLIC_SUPABASE_ANON_KEY=" 2>$null)
+$serviceKey = (Select-String -Path $envLocalPath -Pattern "^SUPABASE_SERVICE_ROLE_KEY=" 2>$null)
 
 if (-not $supabaseUrl) { $ssoIssues += "NEXT_PUBLIC_SUPABASE_URL is missing" }
 if (-not $supabaseKey) { $ssoIssues += "NEXT_PUBLIC_SUPABASE_ANON_KEY is missing" }
@@ -301,9 +309,9 @@ if ($allGood) {
     Write-Host "`n=== Everything is already set up. Nothing to do. ===" -ForegroundColor Cyan
 } else {
     Write-Host "`n=== Setup complete! ===" -ForegroundColor Cyan
-    if (-not (Test-Path ".env.local") -or (Get-Content ".env.local" -Raw) -match "your-project\.supabase\.co") {
-        Write-Host "REMINDER: Update .env.local with your real Supabase keys before running the app." -ForegroundColor Yellow
-    }
+if (-not (Test-Path $envLocalPath) -or (Get-Content $envLocalPath -Raw) -match "your-project\.supabase\.co") {
+    Write-Host "REMINDER: Update .env.local with your real Supabase keys before running the app." -ForegroundColor Yellow
+}
     if ($ssoIssues.Count -gt 0) {
         Write-Host "REMINDER: Resolve the SSO configuration issues listed above." -ForegroundColor Yellow
         Write-Host "  See docs/09-sso-architecture/ for setup guidance." -ForegroundColor Yellow

@@ -7,11 +7,13 @@
 import { NextResponse } from 'next/server';
 import { invalidateSession } from '@/core/auth/session.service';
 import { getClearPSBSessionCookieHeader, getPSBSessionCookieFromRequest } from '@/core/auth/cookies.utils';
+import { getCORSHeaders } from '@/core/auth/cors.utils';
 
 export async function POST(request) {
   try {
     // Get token from request
     const token = getPSBSessionCookieFromRequest(request);
+    const corsHeaders = getCORSHeaders(request);
 
     // Invalidate session in database
     if (token) {
@@ -21,7 +23,7 @@ export async function POST(request) {
     // Create response with cleared cookie
     const response = NextResponse.json(
       { success: true, message: 'Logged out successfully' },
-      { status: 200 }
+      { status: 200, headers: corsHeaders }
     );
 
     // Clear session cookie
@@ -34,7 +36,7 @@ export async function POST(request) {
     // Still clear the cookie even if database operation fails
     const response = NextResponse.json(
       { success: true, message: 'Logout complete' },
-      { status: 200 }
+      { status: 200, headers: getCORSHeaders(request) }
     );
 
     response.headers.set('Set-Cookie', getClearPSBSessionCookieHeader());
@@ -48,10 +50,7 @@ export async function OPTIONS(request) {
     {},
     {
       status: 200,
-      headers: {
-        'Access-Control-Allow-Methods': 'POST, OPTIONS',
-        'Access-Control-Allow-Headers': 'Content-Type',
-      },
+      headers: getCORSHeaders(request),
     }
   );
 }
