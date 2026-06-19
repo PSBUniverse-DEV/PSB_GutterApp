@@ -8,21 +8,20 @@ import { NextResponse } from 'next/server';
 import { verifyToken, isTokenValid } from '@/core/auth/jwt.utils';
 import { isSessionInvalidated } from '@/core/auth/session.service';
 import { getPSBSessionCookieFromRequest } from '@/core/auth/cookies.utils';
+import { getCORSHeaders } from '@/core/auth/cors.utils';
 
 export async function GET(request) {
   try {
     // Get token from request
     const token = getPSBSessionCookieFromRequest(request);
+    const corsHeaders = getCORSHeaders(request);
 
     if (!token) {
       return NextResponse.json(
         { valid: false, error: 'No session token found' },
         {
           status: 401,
-          headers: {
-            'Access-Control-Allow-Origin': '*',
-            'Access-Control-Allow-Credentials': 'true',
-          },
+          headers: corsHeaders,
         }
       );
     }
@@ -36,10 +35,7 @@ export async function GET(request) {
         { valid: false, error: error.message },
         {
           status: 401,
-          headers: {
-            'Access-Control-Allow-Origin': '*',
-            'Access-Control-Allow-Credentials': 'true',
-          },
+          headers: corsHeaders,
         }
       );
     }
@@ -51,10 +47,7 @@ export async function GET(request) {
         { valid: false, error: 'Session has been invalidated' },
         {
           status: 401,
-          headers: {
-            'Access-Control-Allow-Origin': '*',
-            'Access-Control-Allow-Credentials': 'true',
-          },
+          headers: corsHeaders,
         }
       );
     }
@@ -75,10 +68,7 @@ export async function GET(request) {
       },
       {
         status: 200,
-        headers: {
-          'Access-Control-Allow-Origin': '*',
-          'Access-Control-Allow-Credentials': 'true',
-        },
+        headers: corsHeaders,
       }
     );
   } catch (error) {
@@ -87,10 +77,7 @@ export async function GET(request) {
       { valid: false, error: 'Internal server error' },
       {
         status: 500,
-        headers: {
-          'Access-Control-Allow-Origin': '*',
-          'Access-Control-Allow-Credentials': 'true',
-        },
+        headers: getCORSHeaders(request),
       }
     );
   }
@@ -100,16 +87,14 @@ export async function POST(request) {
   try {
     const body = await request.json();
     const { token } = body;
+    const corsHeaders = getCORSHeaders(request);
 
     if (!token) {
       return NextResponse.json(
         { valid: false, error: 'Token is required' },
         {
           status: 400,
-          headers: {
-            'Access-Control-Allow-Origin': '*',
-            'Access-Control-Allow-Credentials': 'true',
-          },
+          headers: corsHeaders,
         }
       );
     }
@@ -123,10 +108,7 @@ export async function POST(request) {
         { valid: false, error: error.message },
         {
           status: 401,
-          headers: {
-            'Access-Control-Allow-Origin': '*',
-            'Access-Control-Allow-Credentials': 'true',
-          },
+          headers: corsHeaders,
         }
       );
     }
@@ -138,10 +120,7 @@ export async function POST(request) {
         { valid: false, error: 'Session has been invalidated' },
         {
           status: 401,
-          headers: {
-            'Access-Control-Allow-Origin': '*',
-            'Access-Control-Allow-Credentials': 'true',
-          },
+          headers: corsHeaders,
         }
       );
     }
@@ -162,10 +141,7 @@ export async function POST(request) {
       },
       {
         status: 200,
-        headers: {
-          'Access-Control-Allow-Origin': '*',
-          'Access-Control-Allow-Credentials': 'true',
-        },
+        headers: corsHeaders,
       }
     );
   } catch (error) {
@@ -174,10 +150,7 @@ export async function POST(request) {
       { valid: false, error: 'Internal server error' },
       {
         status: 500,
-        headers: {
-          'Access-Control-Allow-Origin': '*',
-          'Access-Control-Allow-Credentials': 'true',
-        },
+        headers: getCORSHeaders(request),
       }
     );
   }
@@ -188,12 +161,7 @@ export async function OPTIONS(request) {
     {},
     {
       status: 200,
-      headers: {
-        'Access-Control-Allow-Origin': '*',
-        'Access-Control-Allow-Methods': 'GET, POST, OPTIONS',
-        'Access-Control-Allow-Headers': 'Content-Type',
-        'Access-Control-Allow-Credentials': 'true',
-      },
+      headers: getCORSHeaders(request),
     }
   );
 }

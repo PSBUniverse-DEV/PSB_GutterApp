@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { getCORSHeaders } from "@/core/auth/cors.utils";
 
 /**
  * SSO Proxy Middleware for PSBUniverse
@@ -22,7 +23,12 @@ export function proxy(req) {
   const isPublicAsset = pathname.includes("_next") || pathname === "/favicon.ico";
 
   if (isApiRoute || isPublicAsset) {
-    return NextResponse.next();
+    const response = NextResponse.next();
+    const corsHeaders = getCORSHeaders(req);
+    Object.entries(corsHeaders).forEach(([key, value]) => {
+      response.headers.set(key, value);
+    });
+    return response;
   }
 
   // ── Check for SSO session token ────────────────────────────────────────
@@ -42,6 +48,12 @@ export function proxy(req) {
     // Add Cache-Control to prevent caching redirects
     response.headers.set("Cache-Control", "no-store, must-revalidate");
     
+    // Add CORS headers to redirect response so they survive domain redirects
+    const corsHeaders = getCORSHeaders(req);
+    Object.entries(corsHeaders).forEach(([key, value]) => {
+      response.headers.set(key, value);
+    });
+    
     return response;
   }
 
@@ -50,6 +62,12 @@ export function proxy(req) {
   
   // Add security headers for SSO system
   response.headers.set("X-SSO-Enabled", "true");
+  
+  // Add CORS headers to all responses
+  const corsHeaders = getCORSHeaders(req);
+  Object.entries(corsHeaders).forEach(([key, value]) => {
+    response.headers.set(key, value);
+  });
   
   return response;
 }

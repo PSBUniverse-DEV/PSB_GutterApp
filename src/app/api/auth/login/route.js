@@ -8,16 +8,18 @@ import { NextResponse } from 'next/server';
 import { getSupabaseAdmin } from '@/core/supabase/admin';
 import { createUserSession } from '@/core/auth/session.service';
 import { getPSBSessionCookieHeader } from '@/core/auth/cookies.utils';
+import { getCORSHeaders } from '@/core/auth/cors.utils';
 
 export async function POST(request) {
   try {
     const body = await request.json();
     const { accessToken } = body;
+    const corsHeaders = getCORSHeaders(request);
 
     if (!accessToken) {
       return NextResponse.json(
         { error: 'Access token is required' },
-        { status: 400 }
+        { status: 400, headers: corsHeaders }
       );
     }
 
@@ -28,7 +30,7 @@ export async function POST(request) {
     if (authError || !authData?.user) {
       return NextResponse.json(
         { error: 'Invalid or expired access token' },
-        { status: 401 }
+        { status: 401, headers: corsHeaders }
       );
     }
 
@@ -87,7 +89,7 @@ export async function POST(request) {
     if (!dbUser) {
       return NextResponse.json(
         { error: 'User not found in system' },
-        { status: 404 }
+        { status: 404, headers: corsHeaders }
       );
     }
 
@@ -106,7 +108,7 @@ export async function POST(request) {
           name: `${dbUser.first_name || ''} ${dbUser.last_name || ''}`.trim(),
         },
       },
-      { status: 200 }
+      { status: 200, headers: corsHeaders }
     );
 
     // Set secure session cookie
@@ -117,7 +119,7 @@ export async function POST(request) {
     console.error('Login endpoint error:', error);
     return NextResponse.json(
       { error: 'Internal server error' },
-      { status: 500 }
+      { status: 500, headers: getCORSHeaders(request) }
     );
   }
 }
@@ -127,10 +129,7 @@ export async function OPTIONS(request) {
     {},
     {
       status: 200,
-      headers: {
-        'Access-Control-Allow-Methods': 'POST, OPTIONS',
-        'Access-Control-Allow-Headers': 'Content-Type',
-      },
+      headers: getCORSHeaders(request),
     }
   );
 }

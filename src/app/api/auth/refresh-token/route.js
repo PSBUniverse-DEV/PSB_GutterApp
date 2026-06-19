@@ -9,6 +9,7 @@ import { verifyToken, getTokenTimeRemaining, generateToken } from '@/core/auth/j
 import { getPSBSessionCookieFromRequest, getPSBSessionCookieHeader } from '@/core/auth/cookies.utils';
 import { createUserSession } from '@/core/auth/session.service';
 import { getSupabaseAdmin } from '@/core/supabase/admin';
+import { getCORSHeaders } from '@/core/auth/cors.utils';
 
 // Refresh token if less than 2 hours remaining
 const REFRESH_THRESHOLD = 2 * 60 * 60 * 1000;
@@ -17,6 +18,7 @@ export async function POST(request) {
   try {
     // Get token from request
     let token = getPSBSessionCookieFromRequest(request);
+    const corsHeaders = getCORSHeaders(request);
 
     // Fallback: check request body
     if (!token) {
@@ -27,7 +29,7 @@ export async function POST(request) {
     if (!token) {
       return NextResponse.json(
         { success: false, error: 'No session token found' },
-        { status: 401 }
+        { status: 401, headers: corsHeaders }
       );
     }
 
@@ -38,7 +40,7 @@ export async function POST(request) {
     } catch (error) {
       return NextResponse.json(
         { success: false, error: 'Invalid or expired token' },
-        { status: 401 }
+        { status: 401, headers: corsHeaders }
       );
     }
 
@@ -54,7 +56,7 @@ export async function POST(request) {
           refreshed: false,
           expiresAt: payload.expiresAt,
         },
-        { status: 200 }
+        { status: 200, headers: corsHeaders }
       );
     }
 
@@ -79,7 +81,7 @@ export async function POST(request) {
         refreshed: true,
         expiresAt: Date.now() + 24 * 60 * 60 * 1000,
       },
-      { status: 200 }
+      { status: 200, headers: corsHeaders }
     );
 
     // Set new session cookie
@@ -90,7 +92,7 @@ export async function POST(request) {
     console.error('Token refresh error:', error);
     return NextResponse.json(
       { success: false, error: 'Internal server error' },
-      { status: 500 }
+      { status: 500, headers: getCORSHeaders(request) }
     );
   }
 }
@@ -100,10 +102,7 @@ export async function OPTIONS(request) {
     {},
     {
       status: 200,
-      headers: {
-        'Access-Control-Allow-Methods': 'POST, OPTIONS',
-        'Access-Control-Allow-Headers': 'Content-Type',
-      },
+      headers: getCORSHeaders(request),
     }
   );
 }
