@@ -295,26 +295,6 @@ export async function deleteGutterProject(projId) {
 
 // ─── Purchase Order ────────────────────────────────────────
 
-async function resolveCurrentUserId(supabase) {
-  try {
-    const { cookies } = await import("next/headers");
-    const cookieStore = await cookies();
-    const accessToken = cookieStore.get("sb-access-token")?.value
-      || cookieStore.get("psb_session")?.value;
-    if (!accessToken) return null;
-    const { data: authData } = await supabase.auth.getUser(accessToken);
-    if (!authData?.user?.id) return null;
-    const { data: dbUser } = await supabase
-      .from("psb_s_user")
-      .select("user_id")
-      .eq("auth_user_id", authData.user.id)
-      .maybeSingle();
-    return dbUser?.user_id || null;
-  } catch {
-    return null;
-  }
-}
-
 export async function savePurchaseOrder(projId, purchaseOrder) {
   const id = toIntOrNull(projId);
   if (id === null) throw new Error("projId is required");
@@ -344,9 +324,11 @@ export async function savePurchaseOrder(projId, purchaseOrder) {
     box_screws_qty: toInt(po.box_screws_qty),
   };
 
+  // Extract userId from purchase order payload (set by client via SSO cookie)
+  const userId = toIntOrNull(po._userId);
+
   const supabase = getSupabaseAdmin();
   const now = new Date().toISOString();
-  const userId = await resolveCurrentUserId(supabase);
 
   const { data: existing } = await supabase
     .from("gtr_m_purchorder")

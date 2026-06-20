@@ -104,6 +104,7 @@ export default function GutterPurchaseOrderView({ projectId, projectData, stored
       const session = getPSBUserPayloadFromCookie();
       const userId = session?.userId || null;
       await savePurchaseOrder(projectId, {
+        _userId: userId,
         k_style_gutter_color: materials.colors.kStyleGutterColor,
         downspout_color: materials.colors.downspoutColor,
         gutter_coil_total_ft: materials.gutterCoil.totalFt,
@@ -122,7 +123,7 @@ export default function GutterPurchaseOrderView({ projectId, projectData, stored
         internal_screws: materials.internal.internalScrews,
         hidden_hangers_qty: materials.internal.hiddenHangers,
         box_screws_qty: materials.internal.boxScrews,
-      }, userId);
+      });
       setBaselineSnapshot(currentSnapshot);
       toastSuccess("Purchase order saved.", "Purchase Order");
     } catch (err) {
