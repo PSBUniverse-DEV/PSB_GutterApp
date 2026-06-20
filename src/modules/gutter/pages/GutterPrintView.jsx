@@ -435,9 +435,31 @@ function QuoteDocument({ header, project, quoteResult, companyProfile, displayDa
 }
 
 /* ═══════════════════════════════════════════════════════════════════════════
-   WORK ORDER DOCUMENT
+   WORK ORDER DOCUMENT — WYSIWYG with PDF output
    ═══════════════════════════════════════════════════════════════════════════ */
 function WorkOrderDocument({ header, sides, materials, companyProfile, workOrderData }) {
+  const wo = workOrderData || {};
+  const dspAssignments = wo.downspoutAssignments || Array.from({ length: 8 }, () => "");
+  const zipScrewsBags = wo.zipScrewsBags || [];
+
+  const materialRows = [
+    { item: 'Gutter Coil 15"', qty: `${fmtInt(materials?.gutterCoil?.totalFt)} FT / ${fmtInt(Math.trunc(materials?.gutterCoil?.totalLbs || 0))} lbs`, color: materials?.gutterCoil?.color || "—" },
+    { item: 'Right End Caps - 6" K-Style', qty: fmtInt(materials?.endCaps?.right?.qty), color: materials?.endCaps?.right?.color || "—" },
+    { item: 'Left End Caps - 6" K-Style', qty: fmtInt(materials?.endCaps?.left?.qty), color: materials?.endCaps?.left?.color || "—" },
+    { item: '3" x 4" Downpipe 10\'ft', qty: fmtInt(materials?.downpipe?.qty), color: materials?.downpipe?.color || "—" },
+    { item: '3" x 4" - 6" One Piece Offset', qty: fmtInt(materials?.onePieceOffset?.qty), color: materials?.onePieceOffset?.color || "—" },
+    { item: '3" x 4" -(A) Elbow', qty: fmtInt(materials?.elbow?.qty), color: materials?.elbow?.color || "—" },
+    { item: '6" Hidden Hangers', qty: fmtInt(materials?.internal?.hiddenHangers), color: "Auto" },
+  ];
+
+  if (zipScrewsBags.length > 0) {
+    zipScrewsBags.forEach((bag, i) => {
+      materialRows.push({ item: `Zip Screws Bag ${i + 1}`, qty: String(bag.qty || 0), color: bag.color || "—" });
+    });
+  } else {
+    materialRows.push({ item: '#8 x 1/2" Zip Screws', qty: fmtInt(materials?.zipScrews?.qty), color: materials?.zipScrews?.color || "—" });
+  }
+
   return (
     <div className={styles.printDocument}>
       {/* Header */}
@@ -448,88 +470,136 @@ function WorkOrderDocument({ header, sides, materials, companyProfile, workOrder
           <div className={styles.docCompanyDetail}>{companyProfile.phone}</div>
         </div>
         <div className={styles.docHeaderRight}>
-          <div className={styles.docHeaderMeta}><span>PO#</span><strong>{workOrderData?.work_order_no ? String(workOrderData.work_order_no) : String(header.proj_id)}</strong></div>
-          <div className={styles.docHeaderMeta}><span>Date</span><strong>{workOrderData?.work_order_date ? toDisplay(workOrderData.work_order_date) : toDisplay(header.date)}</strong></div>
+          <div className={styles.docHeaderMeta}><span>PO#</span><strong>{wo.work_order_no ? String(wo.work_order_no) : String(header.proj_id)}</strong></div>
+          <div className={styles.docHeaderMeta}><span>Date</span><strong>{wo.work_order_date ? toDisplay(wo.work_order_date) : toDisplay(header.date)}</strong></div>
         </div>
       </div>
 
       <hr className={styles.docDivider} />
 
-      {/* Project Info */}
-      <div className={styles.docSection}>
-        <h3 className={styles.docSectionTitle}>Work Order</h3>
-        <table className={styles.docDetailsTable}>
-          <tbody>
-            <tr><td className={styles.docDetailsLabel}>Customer</td><td>{toDisplay(header.customer)}</td></tr>
-            <tr><td className={styles.docDetailsLabel}>Project</td><td>{toDisplay(header.project_name)}</td></tr>
-            <tr><td className={styles.docDetailsLabel}>Address</td><td>{toDisplay(header.project_address)}</td></tr>
-            <tr><td className={styles.docDetailsLabel}>K-Style Color</td><td>{materials?.colors?.kStyleGutterColor || "—"}</td></tr>
-            <tr><td className={styles.docDetailsLabel}>Downspout Color</td><td>{materials?.colors?.downspoutColor || "—"}</td></tr>
-          </tbody>
-        </table>
-      </div>
-
-      {/* Measurements */}
-      <div className={styles.docSection}>
-        <h3 className={styles.docSectionTitle}>Measurements</h3>
-        <table className={styles.docMaterialTable}>
-          <thead>
-            <tr><th>#</th><th>Length (FT)</th><th>Height (FT)</th><th>Segments</th><th>Downspouts</th></tr>
-          </thead>
-          <tbody>
-            {sides.map((side, i) => (
-              <tr key={i}>
-                <td>{i + 1}</td>
-                <td>{toDisplay(side.length)}</td>
-                <td>{toDisplay(side.height)}</td>
-                <td>{toDisplay(side.segments)}</td>
-                <td>{toDisplay(side.downspout_qty)}</td>
+      {/* Row: Work Order (left) + Installer (right) */}
+      <div style={{ display: "flex", gap: "24px", marginBottom: "14px" }}>
+        <div style={{ flex: 1 }}>
+          <h3 className={styles.docSectionTitle} style={{ marginBottom: 6 }}>Work Order</h3>
+          <table className={styles.docDetailsTable}>
+            <tbody>
+              <tr><td className={styles.docDetailsLabel}>Customer</td><td>{toDisplay(header.customer)}</td></tr>
+              <tr><td className={styles.docDetailsLabel}>Project</td><td>{toDisplay(header.project_name)}</td></tr>
+              <tr><td className={styles.docDetailsLabel}>Address</td><td>{toDisplay(header.project_address)}</td></tr>
+              <tr><td className={styles.docDetailsLabel}>K-Style Color</td><td>{materials?.colors?.kStyleGutterColor || "—"}</td></tr>
+              <tr><td className={styles.docDetailsLabel}>Downspout Color</td><td>{materials?.colors?.downspoutColor || "—"}</td></tr>
+            </tbody>
+          </table>
+        </div>
+        <div style={{ flex: 1 }}>
+          <h3 className={styles.docSectionTitle} style={{ marginBottom: 6 }}>Installer</h3>
+          <table className={styles.docDetailsTable}>
+            <tbody>
+              <tr>
+                <td className={styles.docDetailsLabel}>Name</td>
+                <td style={{ borderBottom: "1px solid #999", height: 22 }}>{wo.installer_name ? toDisplay(wo.installer_name) : ""}</td>
               </tr>
-            ))}
-          </tbody>
-        </table>
-      </div>
-
-      {/* Material Summary */}
-      <div className={styles.docSection}>
-        <h3 className={styles.docSectionTitle}>Material Summary</h3>
-        <table className={styles.docMaterialTable}>
-          <thead><tr><th>Item</th><th>QTY</th><th>Color</th></tr></thead>
-          <tbody>
-            <tr><td>Gutter Coil 15&quot; (Ft / Lbs)</td><td>{fmtNum(materials?.gutterCoil?.totalFt)}</td><td>{fmtNum(materials?.gutterCoil?.totalLbs)} / {materials?.gutterCoil?.color || "—"}</td></tr>
-            <tr><td>Right End Caps - 6&quot; K-Style</td><td>{fmtInt(materials?.endCaps?.right?.qty)}</td><td>{materials?.endCaps?.right?.color || "—"}</td></tr>
-            <tr><td>Left End Caps - 6&quot; K-Style</td><td>{fmtInt(materials?.endCaps?.left?.qty)}</td><td>{materials?.endCaps?.left?.color || "—"}</td></tr>
-            <tr><td>3&quot; x 4&quot; Downpipe 10&apos;ft</td><td>{fmtInt(materials?.downpipe?.qty)}</td><td>{materials?.downpipe?.color || "—"}</td></tr>
-            <tr><td>3&quot; x 4&quot; - 6&quot; One Piece Offset</td><td>{fmtInt(materials?.onePieceOffset?.qty)}</td><td>{materials?.onePieceOffset?.color || "—"}</td></tr>
-            <tr><td>3&quot; x 4&quot; -(A) Elbow</td><td>{fmtInt(materials?.elbow?.qty)}</td><td>{materials?.elbow?.color || "—"}</td></tr>
-            <tr><td>#8 x 1/2&quot; Zip Screws</td><td>{fmtInt(materials?.zipScrews?.qty)}</td><td>{materials?.zipScrews?.color || "—"}</td></tr>
-            <tr><td>6&quot; Hidden Hangers</td><td>{fmtInt(materials?.internal?.hiddenHangers)}</td><td>Auto</td></tr>
-          </tbody>
-        </table>
-      </div>
-
-      {/* Sketch area */}
-      <div className={styles.docSection}>
-        <h3 className={styles.docSectionTitle}>Sketch / Diagram</h3>
-        <div className={styles.docSketchBox}>
-          <span className={styles.docSketchLabel} data-pos="top">Front</span>
-          <span className={styles.docSketchLabel} data-pos="bottom">Back</span>
-          <span className={styles.docSketchLabel} data-pos="left">Left</span>
-          <span className={styles.docSketchLabel} data-pos="right">Right</span>
+              <tr>
+                <td className={styles.docDetailsLabel}>Install Date</td>
+                <td style={{ borderBottom: "1px solid #999", height: 22 }}>{wo.installation_date ? toDisplay(wo.installation_date) : ""}</td>
+              </tr>
+              <tr>
+                <td className={styles.docDetailsLabel}>Signature</td>
+                <td style={{ borderBottom: "1px solid #999", height: 22 }}>{wo.signature_name ? toDisplay(wo.signature_name) : ""}</td>
+              </tr>
+              <tr>
+                <td className={styles.docDetailsLabel}>Signature Date</td>
+                <td style={{ borderBottom: "1px solid #999", height: 22 }}>{wo.signature_date ? toDisplay(wo.signature_date) : ""}</td>
+              </tr>
+            </tbody>
+          </table>
         </div>
       </div>
 
-      {/* Notes */}
-      <div className={styles.docSection}>
-        <h3 className={styles.docSectionTitle}>Installer Notes</h3>
-        <div className={styles.docNotesBox}></div>
+      <hr className={styles.docDivider} />
+
+      {/* Row: Measurements (left) + Material Summary (right) */}
+      <div style={{ display: "flex", gap: "16px", marginBottom: "14px" }}>
+        <div style={{ flex: 1 }}>
+          <h3 className={styles.docSectionTitle}>Measurements</h3>
+          <table className={styles.docMaterialTable}>
+            <thead>
+              <tr><th>#</th><th>Length (FT)</th><th>Height (FT)</th><th>Segments</th><th>Downspouts</th></tr>
+            </thead>
+            <tbody>
+              {sides.map((side, i) => (
+                <tr key={i}>
+                  <td>{i + 1}</td>
+                  <td>{toDisplay(side.length)}</td>
+                  <td>{toDisplay(side.height)}</td>
+                  <td>{toDisplay(side.segments)}</td>
+                  <td>{toDisplay(side.downspout_qty)}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+        <div style={{ flex: 1 }}>
+          <h3 className={styles.docSectionTitle}>Material Summary</h3>
+          <table className={styles.docMaterialTable}>
+            <thead><tr><th>Item</th><th>QTY</th><th>Color</th></tr></thead>
+            <tbody>
+              {materialRows.map((row) => (
+                <tr key={row.item}>
+                  <td>{row.item}</td>
+                  <td>{row.qty}</td>
+                  <td>{row.color}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      <hr className={styles.docDivider} />
+
+      {/* Row: Sketch (70%) + DSP & Notes (30%) */}
+      <div style={{ display: "flex", gap: "16px", minHeight: "240px" }}>
+        <div style={{ flex: 7 }}>
+          <h3 className={styles.docSectionTitle}>Sketch / Diagram</h3>
+          <div className={styles.docSketchBox}>
+            <span className={styles.docSketchLabel} data-pos="top">Front</span>
+            <span className={styles.docSketchLabel} data-pos="bottom">Back</span>
+            <span className={styles.docSketchLabel} data-pos="left">Left</span>
+            <span className={styles.docSketchLabel} data-pos="right">Right</span>
+          </div>
+        </div>
+        <div style={{ flex: 3, display: "flex", flexDirection: "column" }}>
+          <h3 className={styles.docSectionTitle}>DSP Assignments</h3>
+          <table className={styles.docMaterialTable} style={{ marginBottom: 6 }}>
+            <thead>
+              <tr>
+                <th style={{ width: "30%" }}>DSP #</th>
+                <th style={{ width: "70%" }}>Assigned Value</th>
+              </tr>
+            </thead>
+            <tbody>
+              {dspAssignments.map((val, i) => (
+                <tr key={i}>
+                  <td>DSP#{i + 1}</td>
+                  <td>{val || "—"}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+
+          <h3 className={styles.docSectionTitle}>Extra Notes</h3>
+          <div className={styles.docNotesBox}>
+            {wo.notes ? <p className={styles.docNote}>{wo.notes}</p> : null}
+          </div>
+        </div>
       </div>
     </div>
   );
 }
 
 /* ═══════════════════════════════════════════════════════════════════════════
-   PURCHASE ORDER DOCUMENT
+   PURCHASE ORDER DOCUMENT — WYSIWYG with PDF output
    ═══════════════════════════════════════════════════════════════════════════ */
 function PurchaseOrderDocument({ header, materials, storedPurchaseOrder }) {
   const po = storedPurchaseOrder || {};
@@ -539,6 +609,19 @@ function PurchaseOrderDocument({ header, materials, storedPurchaseOrder }) {
     if (po[poField] !== undefined && po[poField] !== null) return po[poField];
     return matPath;
   };
+
+  const materialOrderRows = [
+    { item: 'Gutter Coil 15"', qty: fmtNum(getValue("gutter_coil_total_ft", materials?.gutterCoil?.totalFt)), unit: `FT (${fmtNum(getValue("gutter_coil_total_lbs", materials?.gutterCoil?.totalLbs))} lbs)` },
+    { item: 'Right End Caps - 6" K-Style', qty: fmtInt(getValue("right_end_caps_qty", materials?.endCaps?.right?.qty)), unit: "EA" },
+    { item: 'Left End Caps - 6" K-Style', qty: fmtInt(getValue("left_end_caps_qty", materials?.endCaps?.left?.qty)), unit: "EA" },
+    { item: '3" x 4" Downpipe 10\'ft', qty: fmtInt(getValue("downpipe_qty", materials?.downpipe?.qty)), unit: "EA" },
+    { item: '3" x 4" - 6" One Piece Offset', qty: fmtInt(getValue("one_piece_offset_qty", materials?.onePieceOffset?.qty)), unit: "EA" },
+    { item: '3" x 4" -(A) Elbow', qty: fmtInt(getValue("elbow_a_qty", materials?.elbow?.qty)), unit: "EA" },
+    { item: "Spray Paint", qty: fmtInt(getValue("spray_paint_qty", materials?.sprayPaint?.qty)), unit: "CAN" },
+    { item: '#8 x 1/2" Zip Screws', qty: fmtInt(getValue("zip_screws_qty", materials?.zipScrews?.qty)), unit: "EA" },
+    { item: '6" Hidden Hangers', qty: fmtInt(getValue("hidden_hangers_qty", materials?.internal?.hiddenHangers)), unit: "EA" },
+    { item: '#10 x 1-1/2" Box Screws', qty: fmtInt(getValue("box_screws_qty", materials?.internal?.boxScrews)), unit: "EA" },
+  ];
 
   return (
     <div className={styles.printDocument}>
@@ -575,60 +658,16 @@ function PurchaseOrderDocument({ header, materials, storedPurchaseOrder }) {
         <table className={styles.docMaterialTable}>
           <thead><tr><th>Item</th><th className={styles.textRight}>QTY</th><th>Unit</th></tr></thead>
           <tbody>
-            <tr>
-              <td>Gutter Coil 15&quot;</td>
-              <td className={styles.textRight}>{fmtNum(getValue("gutter_coil_total_ft", materials?.gutterCoil?.totalFt))}</td>
-              <td>FT ({fmtNum(getValue("gutter_coil_total_lbs", materials?.gutterCoil?.totalLbs))} lbs)</td>
-            </tr>
-            <tr>
-              <td>Right End Caps - 6&quot; K-Style</td>
-              <td className={styles.textRight}>{fmtInt(getValue("right_end_caps_qty", materials?.endCaps?.right?.qty))}</td>
-              <td>EA</td>
-            </tr>
-            <tr>
-              <td>Left End Caps - 6&quot; K-Style</td>
-              <td className={styles.textRight}>{fmtInt(getValue("left_end_caps_qty", materials?.endCaps?.left?.qty))}</td>
-              <td>EA</td>
-            </tr>
-            <tr>
-              <td>3&quot; x 4&quot; Downpipe 10&apos;ft</td>
-              <td className={styles.textRight}>{fmtInt(getValue("downpipe_qty", materials?.downpipe?.qty))}</td>
-              <td>EA</td>
-            </tr>
-            <tr>
-              <td>3&quot; x 4&quot; - 6&quot; One Piece Offset</td>
-              <td className={styles.textRight}>{fmtInt(getValue("one_piece_offset_qty", materials?.onePieceOffset?.qty))}</td>
-              <td>EA</td>
-            </tr>
-            <tr>
-              <td>3&quot; x 4&quot; -(A) Elbow</td>
-              <td className={styles.textRight}>{fmtInt(getValue("elbow_a_qty", materials?.elbow?.qty))}</td>
-              <td>EA</td>
-            </tr>
-            <tr>
-              <td>Spray Paint</td>
-              <td className={styles.textRight}>{fmtInt(getValue("spray_paint_qty", materials?.sprayPaint?.qty))}</td>
-              <td>CAN</td>
-            </tr>
-            <tr>
-              <td>#8 x 1/2&quot; Zip Screws</td>
-              <td className={styles.textRight}>{fmtInt(getValue("zip_screws_qty", materials?.zipScrews?.qty))}</td>
-              <td>EA</td>
-            </tr>
-            <tr>
-              <td>6&quot; Hidden Hangers</td>
-              <td className={styles.textRight}>{fmtInt(getValue("hidden_hangers_qty", materials?.internal?.hiddenHangers))}</td>
-              <td>EA</td>
-            </tr>
-            <tr>
-              <td>#10 x 1-1/2&quot; Box Screws</td>
-              <td className={styles.textRight}>{fmtInt(getValue("box_screws_qty", materials?.internal?.boxScrews))}</td>
-              <td>EA</td>
-            </tr>
+            {materialOrderRows.map((row) => (
+              <tr key={row.item}>
+                <td>{row.item}</td>
+                <td className={styles.textRight}>{row.qty}</td>
+                <td>{row.unit}</td>
+              </tr>
+            ))}
           </tbody>
         </table>
       </div>
-
     </div>
   );
 }

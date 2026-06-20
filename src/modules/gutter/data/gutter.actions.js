@@ -189,13 +189,31 @@ export async function saveGutterProject({ isEdit, projectId, header, sides, extr
 
   // ─── Auto-sync Work Order & Purchase Order ──────────────
   try {
+    // Resolve color IDs to names for the materials calculation
+    const colorIds = new Set();
+    sideRows.forEach((r) => {
+      if (r.gutter_color_id) colorIds.add(r.gutter_color_id);
+      if (r.downspout_color_id) colorIds.add(r.downspout_color_id);
+    });
+
+    let colorNameById = {};
+    if (colorIds.size > 0) {
+      const { data: colors } = await supabase
+        .from("gtr_s_colors")
+        .select("color_id, name")
+        .in("color_id", Array.from(colorIds));
+      if (colors) {
+        colors.forEach((c) => { colorNameById[String(c.color_id)] = c.name; });
+      }
+    }
+
     const sectionData = sideRows.map((r) => ({
       sides: r.segments,
       length: r.length,
       height: r.height,
       downspoutQty: r.downspout_qty,
-      gutterColor: "",
-      downspoutColor: "",
+      gutterColor: colorNameById[String(r.gutter_color_id)] || "",
+      downspoutColor: colorNameById[String(r.downspout_color_id)] || colorNameById[String(r.gutter_color_id)] || "",
     }));
 
     const materials = calculateMaterials({ sections: sectionData });
@@ -207,9 +225,12 @@ export async function saveGutterProject({ isEdit, projectId, header, sides, extr
       .eq("proj_id", currentProjId)
       .maybeSingle();
 
+    const domGutterColor = materials?.colors?.kStyleGutterColor || null;
+    const domDownspoutColor = materials?.colors?.downspoutColor || null;
+
     const poPayload = {
-      k_style_gutter_color: null,
-      downspout_color: null,
+      k_style_gutter_color: domGutterColor && domGutterColor !== "--" ? domGutterColor : null,
+      downspout_color: domDownspoutColor && domDownspoutColor !== "--" ? domDownspoutColor : null,
       gutter_coil_total_ft: materials?.gutterCoil?.totalFt ?? 0,
       gutter_coil_total_lbs: materials?.gutterCoil?.totalLbs ?? 0,
       right_end_caps_qty: Math.round(materials?.endCaps?.right?.qty ?? 0),
