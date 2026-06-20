@@ -1,4 +1,4 @@
-import { getSupabaseAdmin } from "@/core/supabase/admin";
+import { getSupabaseAdmin } from "./supabase-admin";
 import { calculateQuote, calculateMaterials } from "./gutter.data";
 
 // ─── Helpers ───────────────────────────────────────────────
