@@ -1,4 +1,3 @@
-import { cookies } from "next/headers";
 import { getSupabaseAdmin } from "@/core/supabase/admin";
 import { calculateQuote, calculateMaterials } from "./gutter.data";
 
@@ -188,26 +187,6 @@ export async function saveGutterProject({ isEdit, projectId, header, sides, extr
 
     const materials = calculateMaterials({ sections: sectionData });
 
-    // Resolve current user for audit fields
-    let userId = null;
-    try {
-      const cookieStore = await cookies();
-      const accessToken = cookieStore.get("sb-access-token")?.value;
-      if (accessToken) {
-        const { data: authData } = await supabase.auth.getUser(accessToken);
-        if (authData?.user) {
-          const { data: dbUser } = await supabase
-            .from("psb_s_user")
-            .select("user_id")
-            .eq("auth_user_id", authData.user.id)
-            .maybeSingle();
-          userId = dbUser?.user_id || null;
-        }
-      }
-    } catch {
-      // If user resolution fails, continue without user tracking
-    }
-
     // Auto-save / update Purchase Order
     const { data: existingPO } = await supabase
       .from("gtr_m_purchorder")
@@ -239,12 +218,12 @@ export async function saveGutterProject({ isEdit, projectId, header, sides, extr
     if (existingPO?.purch_order_id) {
       await supabase
         .from("gtr_m_purchorder")
-        .update({ ...poPayload, updated_by: userId, updated_at: now })
+        .update({ ...poPayload, updated_at: now })
         .eq("proj_id", currentProjId);
     } else {
       await supabase
         .from("gtr_m_purchorder")
-        .insert({ proj_id: currentProjId, ...poPayload, created_by: userId, updated_by: userId, created_at: now, updated_at: now });
+        .insert({ proj_id: currentProjId, ...poPayload, created_at: now, updated_at: now });
     }
 
     // Auto-save / update Work Order (basic info only)
@@ -257,7 +236,7 @@ export async function saveGutterProject({ isEdit, projectId, header, sides, extr
     if (!existingWO?.workorder_id) {
       await supabase
         .from("gtr_t_workorders")
-        .insert({ proj_id: currentProjId, created_by: userId, updated_by: userId, created_at: now, updated_at: now });
+        .insert({ proj_id: currentProjId, created_at: now, updated_at: now });
     }
   } catch {
     // Non-blocking: project save succeeded, sync failure is secondary
@@ -303,7 +282,7 @@ export async function deleteGutterProject(projId) {
 
 // ─── Purchase Order ────────────────────────────────────────
 
-export async function savePurchaseOrder(projId, purchaseOrder) {
+export async function savePurchaseOrder(projId, purchaseOrder, userId = null) {
   const id = toIntOrNull(projId);
   if (id === null) throw new Error("projId is required");
   const po = purchaseOrder && typeof purchaseOrder === "object" ? purchaseOrder : {};
@@ -335,26 +314,6 @@ export async function savePurchaseOrder(projId, purchaseOrder) {
   const supabase = getSupabaseAdmin();
   const now = new Date().toISOString();
 
-  // Resolve current user for audit fields
-  let userId = null;
-  try {
-    const cookieStore = await cookies();
-    const accessToken = cookieStore.get("sb-access-token")?.value;
-    if (accessToken) {
-      const { data: authData } = await supabase.auth.getUser(accessToken);
-      if (authData?.user) {
-        const { data: dbUser } = await supabase
-          .from("psb_s_user")
-          .select("user_id")
-          .eq("auth_user_id", authData.user.id)
-          .maybeSingle();
-        userId = dbUser?.user_id || null;
-      }
-    }
-  } catch {
-    // Continue without user tracking if resolution fails
-  }
-
   const { data: existing } = await supabase
     .from("gtr_m_purchorder")
     .select("purch_order_id")
@@ -364,7 +323,7 @@ export async function savePurchaseOrder(projId, purchaseOrder) {
   if (existing?.purch_order_id) {
     const { data, error } = await supabase
       .from("gtr_m_purchorder")
-      .update({ ...normalized, updated_by: userId, updated_at: now })
+      .update({ ...normalized, updated_at: now })
       .eq("proj_id", id)
       .select("*")
       .single();
@@ -374,7 +333,7 @@ export async function savePurchaseOrder(projId, purchaseOrder) {
 
   const { data, error } = await supabase
     .from("gtr_m_purchorder")
-    .insert({ proj_id: id, ...normalized, created_by: userId, updated_by: userId, created_at: now, updated_at: now })
+    .insert({ proj_id: id, ...normalized, created_at: now, updated_at: now })
     .select("*")
     .single();
   if (error) throw new Error(error.message);

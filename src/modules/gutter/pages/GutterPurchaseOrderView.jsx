@@ -9,6 +9,7 @@ import { faBuilding } from "@fortawesome/free-regular-svg-icons";
 import { Button, toastError, toastSuccess } from "@/shared/components/ui";
 import { savePurchaseOrder } from "../data/gutter.actions";
 import { calculateMaterials } from "../data/gutter.data";
+import { getPSBUserPayloadFromCookie } from "@/core/sso-client";
 import styles from "./GutterWorkOrder.module.css";
 
 const toNumber = (value) => {
@@ -100,6 +101,8 @@ export default function GutterPurchaseOrderView({ projectId, projectData, stored
     if (!projectId || !materials) return;
     setSaving(true);
     try {
+      const session = getPSBUserPayloadFromCookie();
+      const userId = session?.userId || null;
       await savePurchaseOrder(projectId, {
         k_style_gutter_color: materials.colors.kStyleGutterColor,
         downspout_color: materials.colors.downspoutColor,
@@ -119,7 +122,7 @@ export default function GutterPurchaseOrderView({ projectId, projectData, stored
         internal_screws: materials.internal.internalScrews,
         hidden_hangers_qty: materials.internal.hiddenHangers,
         box_screws_qty: materials.internal.boxScrews,
-      });
+      }, userId);
       setBaselineSnapshot(currentSnapshot);
       toastSuccess("Purchase order saved.", "Purchase Order");
     } catch (err) {
