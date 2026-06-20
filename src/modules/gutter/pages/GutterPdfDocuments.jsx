@@ -45,8 +45,6 @@ const s = StyleSheet.create({
   sketchLabel: { position: "absolute", fontSize: 8, color: "#666" },
   // Notes box
   notesBox: { height: 80, borderWidth: 1, borderColor: "#ccc", borderStyle: "dashed", marginTop: 6 },
-  // Internal section
-  internalSection: { backgroundColor: "#f9f9f9", padding: 8, borderWidth: 1, borderColor: "#eee" },
   note: { fontSize: 9, marginTop: 4 },
 });
 
@@ -391,7 +389,6 @@ export function PurchaseOrderPdf({ header, materials, storedPurchaseOrder }) {
   };
 
   const matW = ["50%", "20%", "30%"];
-  const intW = ["70%", "30%"];
 
   return (
     <Document>
@@ -441,19 +438,6 @@ export function PurchaseOrderPdf({ header, materials, storedPurchaseOrder }) {
           ))}
         </View>
 
-        {/* Internal Reference */}
-        <View style={[s.section, s.internalSection]}>
-          <Text style={s.sectionTitle}>Internal Reference (Do Not Print for Customer)</Text>
-          <TableRow header cells={["Item", { text: "QTY", align: "right" }]} widths={intW} />
-          {[
-            ["Total Downspouts", fmtInt(getValue("total_downspouts", materials?.internal?.totalDownspouts))],
-            ["Total End Caps", fmtInt(getValue("total_endcaps", materials?.internal?.totalEndcaps))],
-            ["Rectangular Outlets", fmtInt(getValue("rectangular_outlets", materials?.internal?.rectangularOutlets))],
-            ["Internal Screws (6 per offset/elbow)", fmtInt(getValue("internal_screws", materials?.internal?.internalScrews))],
-          ].map(([item, qty]) => (
-            <TableRow key={item} cells={[item, { text: qty, align: "right" }]} widths={intW} />
-          ))}
-        </View>
       </Page>
     </Document>
   );

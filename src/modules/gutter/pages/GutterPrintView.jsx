@@ -629,19 +629,6 @@ function PurchaseOrderDocument({ header, materials, storedPurchaseOrder }) {
         </table>
       </div>
 
-      {/* Internal — not customer facing */}
-      <div className={`${styles.docSection} ${styles.docInternalSection}`}>
-        <h3 className={styles.docSectionTitle}>Internal Reference (Do Not Print for Customer)</h3>
-        <table className={styles.docMaterialTable}>
-          <thead><tr><th>Item</th><th className={styles.textRight}>QTY</th></tr></thead>
-          <tbody>
-            <tr><td>Total Downspouts</td><td className={styles.textRight}>{fmtInt(getValue("total_downspouts", materials?.internal?.totalDownspouts))}</td></tr>
-            <tr><td>Total End Caps</td><td className={styles.textRight}>{fmtInt(getValue("total_endcaps", materials?.internal?.totalEndcaps))}</td></tr>
-            <tr><td>Rectangular Outlets</td><td className={styles.textRight}>{fmtInt(getValue("rectangular_outlets", materials?.internal?.rectangularOutlets))}</td></tr>
-            <tr><td>Internal Screws (6 per offset/elbow)</td><td className={styles.textRight}>{fmtInt(getValue("internal_screws", materials?.internal?.internalScrews))}</td></tr>
-          </tbody>
-        </table>
-      </div>
     </div>
   );
 }

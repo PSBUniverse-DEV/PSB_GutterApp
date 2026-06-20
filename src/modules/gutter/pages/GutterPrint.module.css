@@ -280,14 +280,6 @@
   margin-top: 0.4rem;
 }
 
-/* ─── Internal section (dashed border) ─── */
-.docInternalSection {
-  border: 1px dashed #ccc;
-  border-radius: 6px;
-  padding: 1rem 1.25rem;
-  background: #fafafa;
-}
-
 /* ─── Utilities ─── */
 .textRight {
   text-align: right;
@@ -316,11 +308,6 @@
     box-shadow: none;
     border-radius: 0;
     padding: 0;
-  }
-
-  .docInternalSection {
-    page-break-before: auto;
-    border-color: #999;
   }
 
   .docSection {
