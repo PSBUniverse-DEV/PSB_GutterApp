@@ -8,6 +8,8 @@ import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { faArrowLeft, faCheck, faPrint, faGear, faLayerGroup, faCirclePlus } from "@fortawesome/free-solid-svg-icons";
 import { faFolderOpen, faTrashCan, faFileLines } from "@fortawesome/free-regular-svg-icons";
 import { Button, Card, toastError, toastSuccess, toastWarning } from "@/shared/components/ui";
+import { pdf } from "@react-pdf/renderer";
+import { QuotePdf } from "./GutterPdfDocuments";
 import { saveGutterProject } from "../data/gutter.actions";
 import GutterSnapshotHistory from "../components/GutterSnapshotHistory";
 import styles from "./GutterProject.module.css";
@@ -334,6 +336,44 @@ export default function GutterProjectFormView({ mode = "create", projectId = nul
     }
   }, [project, isEdit, projectId, router, currentSnapshot]);
 
+  // ─── Direct Print ─────────────────────────────────────
+  const [printing, setPrinting] = useState(false);
+
+  const handlePrint = useCallback(async () => {
+    if (!quoteResult || printing) return;
+    setPrinting(true);
+    try {
+      const doc = (
+        <QuotePdf
+          header={{
+            proj_id: project.projId || "",
+            customer: project.customer || "",
+            project_name: project.projectName || "",
+            project_address: project.projectAddress || "",
+            date: project.date || "",
+            manufacturer_id: project.manufacturerId || "",
+          }}
+          quoteResult={quoteResult}
+          companyProfile={companyProfile}
+          displayDate={displayDate}
+          selectedManufacturerName={selectedManufacturerName}
+          selectedLeafGuardName={selectedLeafGuardName || null}
+          sectionBreakdownRows={sectionBreakdownRows}
+          extras={extrasMaterialRows.map((r) => ({ name: r.description, quantity: r.qty, unit_price: r.unitPrice }))}
+        />
+      );
+      const blob = await pdf(doc).toBlob();
+      const url = URL.createObjectURL(blob);
+      const printWindow = window.open(url, "_blank");
+      if (printWindow) {
+        printWindow.onload = () => printWindow.print();
+      }
+      setTimeout(() => URL.revokeObjectURL(url), 60000);
+    } finally {
+      setPrinting(false);
+    }
+  }, [project, quoteResult, companyProfile, displayDate, selectedManufacturerName, selectedLeafGuardName, sectionBreakdownRows, extrasMaterialRows, printing]);
+
   // ─── Format helpers ────────────────────────────────────
   const fmt = (n) => typeof n === "number" ? n.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 }) : "—";
   const fmtFootage = (n) => { const v = Number(n || 0); return Number.isFinite(v) ? v.toLocaleString("en-US", { minimumFractionDigits: 0, maximumFractionDigits: 2 }) : "0"; };
@@ -394,7 +434,7 @@ export default function GutterProjectFormView({ mode = "create", projectId = nul
             <Button variant="outline-primary" onClick={() => { setNavigatingPurchaseOrder(true); router.push(`/gutter/${projectId}/purchase-order`); }} disabled={navigatingPurchaseOrder} loading={navigatingPurchaseOrder}>Purchase Order</Button>
           )}
           {!hasChanges && (
-            <Button variant="secondary" onClick={() => router.push(`/gutter/${projectId}/print`)}>
+            <Button variant="secondary" onClick={handlePrint} disabled={printing} loading={printing}>
               <FontAwesomeIcon icon={faPrint} className="me-1" /> Print / PDF
             </Button>
           )}

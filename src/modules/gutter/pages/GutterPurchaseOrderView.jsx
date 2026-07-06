@@ -7,6 +7,8 @@ import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { faArrowLeft, faCheck, faPrint, faBoxOpen, faUpRightFromSquare, faTriangleExclamation } from "@fortawesome/free-solid-svg-icons";
 import { faBuilding } from "@fortawesome/free-regular-svg-icons";
 import { Button, toastError, toastSuccess } from "@/shared/components/ui";
+import { pdf } from "@react-pdf/renderer";
+import { PurchaseOrderPdf } from "./GutterPdfDocuments";
 import { savePurchaseOrder } from "../data/gutter.actions";
 import { calculateMaterials } from "../data/gutter.data";
 import { getPSBUserPayloadFromCookie } from "@/core/sso-client";
@@ -55,6 +57,7 @@ export default function GutterPurchaseOrderView({ projectId, projectData, stored
     };
   });
   const [saving, setSaving] = useState(false);
+  const [printing, setPrinting] = useState(false);
   const [baselineSnapshot, setBaselineSnapshot] = useState(() => storedPurchaseOrder ? JSON.stringify(storedPurchaseOrder) : null);
   const initialStoredRef = useRef(storedPurchaseOrder);
 
@@ -96,6 +99,29 @@ export default function GutterPurchaseOrderView({ projectId, projectData, stored
   const currentSnapshot = useMemo(() => JSON.stringify(manualInputs), [manualInputs]);
   const hasChanges = baselineSnapshot === null || currentSnapshot !== baselineSnapshot;
   const canPrint = baselineSnapshot !== null && !hasChanges;
+
+  const handlePrint = useCallback(async () => {
+    if (!canPrint || printing) return;
+    setPrinting(true);
+    try {
+      const doc = (
+        <PurchaseOrderPdf
+          header={header}
+          materials={materials}
+          storedPurchaseOrder={storedPurchaseOrder}
+        />
+      );
+      const blob = await pdf(doc).toBlob();
+      const url = URL.createObjectURL(blob);
+      const printWindow = window.open(url, "_blank");
+      if (printWindow) {
+        printWindow.onload = () => printWindow.print();
+      }
+      setTimeout(() => URL.revokeObjectURL(url), 60000);
+    } finally {
+      setPrinting(false);
+    }
+  }, [canPrint, printing, header, materials, storedPurchaseOrder]);
 
   const handleSave = useCallback(async () => {
     if (!projectId || !materials) return;
@@ -177,7 +203,7 @@ export default function GutterPurchaseOrderView({ projectId, projectData, stored
             </span>
           )}
           {canPrint && (
-            <Button variant="secondary" onClick={() => window.open(`/gutter/${projectId}/print`, "_blank")}>
+            <Button variant="secondary" onClick={handlePrint} disabled={printing} loading={printing}>
               <FontAwesomeIcon icon={faPrint} className="me-1" /> Print / PDF
             </Button>
           )}

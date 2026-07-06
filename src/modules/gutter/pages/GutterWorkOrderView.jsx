@@ -8,6 +8,8 @@ import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { faArrowLeft, faPrint, faCheck, faRulerCombined, faBoxOpen, faSignsPost } from "@fortawesome/free-solid-svg-icons";
 import { faBuilding, faPenToSquare, faIdBadge, faNoteSticky } from "@fortawesome/free-regular-svg-icons";
 import { Button, toastSuccess, toastError } from "@/shared/components/ui";
+import { pdf } from "@react-pdf/renderer";
+import { WorkOrderPdf } from "./GutterPdfDocuments";
 import { calculateMaterials, calculateQuote } from "../data/gutter.data";
 import { saveGutterWorkOrder } from "../data/gutter.actions";
 import { getPSBUserPayloadFromCookie } from "@/core/sso-client";
@@ -168,7 +170,7 @@ export default function GutterWorkOrderView({ projectId, projectData, manufactur
     });
   };
 
-  // Navigate to print page — auto-save if needed before navigating
+  // Direct PDF print
   const handlePrint = useCallback(async () => {
     if (hasChanges) {
       setNavigatingPrint(true);
@@ -183,8 +185,29 @@ export default function GutterWorkOrderView({ projectId, projectData, manufactur
         setNavigatingPrint(false);
       }
     }
-    router.push(`/gutter/${projectId}/print`);
-  }, [hasChanges, projectId, workOrder, router, saveGutterWorkOrder, currentSnapshot]);
+    setNavigatingPrint(true);
+    try {
+      const companyProfile = { name: "Premium Gutters & DOORS", email: "sales.pdg@premiumsteelgroup.com", phone: "817-502-2520" };
+      const doc = (
+        <WorkOrderPdf
+          header={header}
+          sides={sides}
+          materials={materials}
+          companyProfile={companyProfile}
+          workOrderData={workOrder}
+        />
+      );
+      const blob = await pdf(doc).toBlob();
+      const url = URL.createObjectURL(blob);
+      const printWindow = window.open(url, "_blank");
+      if (printWindow) {
+        printWindow.onload = () => printWindow.print();
+      }
+      setTimeout(() => URL.revokeObjectURL(url), 60000);
+    } finally {
+      setNavigatingPrint(false);
+    }
+  }, [hasChanges, projectId, workOrder, header, sides, materials, saveGutterWorkOrder, currentSnapshot]);
 
   if (!header) return <Container className="py-4">Project not found.</Container>;
 
