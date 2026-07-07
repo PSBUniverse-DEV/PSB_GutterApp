@@ -425,17 +425,17 @@ export function PurchaseOrderPdf({ header, materials, storedPurchaseOrder, compa
           <TableRow header cells={["Item", { text: "QTY", align: "right" }, "Unit", "Color"]} widths={matW} />
           {[
             ['Gutter Coil 15"', fmtNum(getValue("gutter_coil_total_ft", materials?.gutterCoil?.totalFt)), `FT (${fmtNum(getValue("gutter_coil_total_lbs", materials?.gutterCoil?.totalLbs))} lbs)`, materials?.gutterCoil?.color || "—"],
-            ['Right End Caps - 6" K-Style', fmtInt(getValue("right_end_caps_qty", materials?.endCaps?.right?.qty)), "EA", materials?.endCaps?.right?.color || "—"],
-            ['Left End Caps - 6" K-Style', fmtInt(getValue("left_end_caps_qty", materials?.endCaps?.left?.qty)), "EA", materials?.endCaps?.left?.color || "—"],
+            ['Right End Caps - 6" K-Style', fmtInt(getValue("right_end_caps_qty", materials?.endCaps?.right?.qty)), "", materials?.endCaps?.right?.color || "—"],
+            ['Left End Caps - 6" K-Style', fmtInt(getValue("left_end_caps_qty", materials?.endCaps?.left?.qty)), "", materials?.endCaps?.left?.color || "—"],
             ['3" x 4" Downpipe 10\'ft', fmtInt(getValue("downpipe_qty", materials?.downpipe?.qty)), "EA", materials?.downpipe?.color || "—"],
-            ['3" x 4" - 6" One Piece Offset', fmtInt(getValue("one_piece_offset_qty", materials?.onePieceOffset?.qty)), "EA", materials?.onePieceOffset?.color || "—"],
-            ['3" x 4" -(A) Elbow', fmtInt(getValue("elbow_a_qty", materials?.elbow?.qty)), "EA", materials?.elbow?.color || "—"],
+            ['3" x 4" - 6" One Piece Offset', fmtInt(getValue("one_piece_offset_qty", materials?.onePieceOffset?.qty)), "", materials?.onePieceOffset?.color || "—"],
+            ['3" x 4" -(A) Elbow', fmtInt(getValue("elbow_a_qty", materials?.elbow?.qty)), "", materials?.elbow?.color || "—"],
             ["Spray Paint", fmtInt(getValue("spray_paint_qty", materials?.sprayPaint?.qty)), "CAN", materials?.sprayPaint?.color || "—"],
-            ['#8 x 1/2" Zip Screws', fmtInt(getValue("zip_screws_qty", materials?.zipScrews?.qty)), "EA", materials?.zipScrews?.color || "—"],
-            ['6" Hidden Hangers', fmtInt(getValue("hidden_hangers_qty", materials?.internal?.hiddenHangers)), "EA", "Auto"],
-            ['#10 x 1-1/2" Box Screws', fmtInt(getValue("box_screws_qty", materials?.internal?.boxScrews)), "EA", "—"],
+            ['#8 x 1/2" Zip Screws', fmtInt(getValue("zip_screws_qty", materials?.zipScrews?.qty)), "", materials?.zipScrews?.color || "—"],
+            ['6" Hidden Hangers', fmtInt(getValue("hidden_hangers_qty", materials?.internal?.hiddenHangers)), "", "Auto"],
+            ['#10 x 1-1/2" Box Screws', fmtInt(getValue("box_screws_qty", materials?.internal?.boxScrews)), "", "—"],
           ].map(([item, qty, unit, color]) => (
-            <TableRow key={item} cells={[item, { text: qty, align: "right" }, unit, color || "—"]} widths={matW} />
+            <TableRow key={item} cells={[item, { text: qty, align: "right" }, unit || "", color || "—"]} widths={matW} />
           ))}
         </View>
 
