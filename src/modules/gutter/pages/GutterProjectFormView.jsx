@@ -336,6 +336,17 @@ export default function GutterProjectFormView({ mode = "create", projectId = nul
     }
   }, [project, isEdit, projectId, router, currentSnapshot]);
 
+  // ─── Format helpers ────────────────────────────────────
+  const fmt = (n) => typeof n === "number" ? n.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 }) : "—";
+  const fmtFootage = (n) => { const v = Number(n || 0); return Number.isFinite(v) ? v.toLocaleString("en-US", { minimumFractionDigits: 0, maximumFractionDigits: 2 }) : "0"; };
+  const fmtCurrency = (n) => `$${fmt(Number(n || 0))}`;
+  const displayOrDash = (v) => hasValue(v) ? String(v).trim() : "—";
+  const displayIntOrDash = (v) => v == null || v === "" ? "—" : String(Math.trunc(Number(v)));
+
+  const displayDate = project?.date
+    ? new Date(project.date).toLocaleDateString("en-US", { year: "numeric", month: "2-digit", day: "2-digit" })
+    : "—";
+
   // ─── Direct Print ─────────────────────────────────────
   const [printing, setPrinting] = useState(false);
 
@@ -373,17 +384,6 @@ export default function GutterProjectFormView({ mode = "create", projectId = nul
       setPrinting(false);
     }
   }, [project, quoteResult, companyProfile, displayDate, selectedManufacturerName, selectedLeafGuardName, sectionBreakdownRows, extrasMaterialRows, printing]);
-
-  // ─── Format helpers ────────────────────────────────────
-  const fmt = (n) => typeof n === "number" ? n.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 }) : "—";
-  const fmtFootage = (n) => { const v = Number(n || 0); return Number.isFinite(v) ? v.toLocaleString("en-US", { minimumFractionDigits: 0, maximumFractionDigits: 2 }) : "0"; };
-  const fmtCurrency = (n) => `$${fmt(Number(n || 0))}`;
-  const displayOrDash = (v) => hasValue(v) ? String(v).trim() : "—";
-  const displayIntOrDash = (v) => v == null || v === "" ? "—" : String(Math.trunc(Number(v)));
-
-  const displayDate = project?.date
-    ? new Date(project.date).toLocaleDateString("en-US", { year: "numeric", month: "2-digit", day: "2-digit" })
-    : "—";
 
   const discountAmount = Number(quoteResult?.pricing?.discountAmount || 0);
   const hasDiscount = discountAmount > 0;
