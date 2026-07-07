@@ -432,8 +432,6 @@ export function PurchaseOrderPdf({ header, materials, storedPurchaseOrder, compa
             ['3" x 4" -(A) Elbow', fmtInt(getValue("elbow_a_qty", materials?.elbow?.qty)), "", materials?.elbow?.color || "—"],
             ["Spray Paint", fmtInt(getValue("spray_paint_qty", materials?.sprayPaint?.qty)), "CAN", materials?.sprayPaint?.color || "—"],
             ['#8 x 1/2" Zip Screws', fmtInt(getValue("zip_screws_qty", materials?.zipScrews?.qty)), "", materials?.zipScrews?.color || "—"],
-            ['6" Hidden Hangers', fmtInt(getValue("hidden_hangers_qty", materials?.internal?.hiddenHangers)), "", "Auto"],
-            ['#10 x 1-1/2" Box Screws', fmtInt(getValue("box_screws_qty", materials?.internal?.boxScrews)), "", "—"],
           ].map(([item, qty, unit, color]) => (
             <TableRow key={item} cells={[item, { text: qty, align: "right" }, unit || "", color || "—"]} widths={matW} />
           ))}
