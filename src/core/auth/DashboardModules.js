@@ -9,8 +9,7 @@ import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { faEnvelope, faPhone } from "@fortawesome/free-solid-svg-icons";
 import AppIcon from "@/shared/components/ui/AppIcon";
 import { useAuth } from "@/core/auth/useAuth";
-import { hasAppAccess } from "@/core/auth/access";
-import psbLogo from "@/styles/psb_logo_notitle.png";
+import psbLogo from "@/styles/psbuniverse_icon.svg";
 
 const DEFAULT_CARD_ICON = "table-cells-large";
 const DEFAULT_GROUP_ICON = "layer-group";
@@ -45,15 +44,22 @@ export default function DashboardModules({ modules }) {
   const hasMountedRef = useRef(false);
 
   // Re-fetch server data when the tab regains focus (e.g. after editing cards in admin).
-  // Throttled to avoid unnecessary refreshes on quick tab switches.
+  // Only refreshes if the tab was actually hidden long enough to be stale — not on quick tab switches.
   useEffect(() => {
-    let lastRefreshTs = Date.now();
-    const REFRESH_THROTTLE_MS = 30_000;
+    let hiddenAt = null;
+    const STALE_THRESHOLD_MS = 10 * 60 * 1000; // 10 minutes
 
     function handleVisibilityChange() {
+      if (document.visibilityState === "hidden") {
+        hiddenAt = Date.now();
+        return;
+      }
+
       if (document.visibilityState === "visible" && hasMountedRef.current) {
-        if (Date.now() - lastRefreshTs < REFRESH_THROTTLE_MS) return;
-        lastRefreshTs = Date.now();
+        if (hiddenAt == null) return;
+        const hiddenDuration = Date.now() - hiddenAt;
+        hiddenAt = null;
+        if (hiddenDuration < STALE_THRESHOLD_MS) return;
         router.refresh();
       }
     }
@@ -67,13 +73,16 @@ export default function DashboardModules({ modules }) {
 
   const safeModules = useMemo(() => (Array.isArray(modules) ? modules : []), [modules]);
 
+  // `modules` is already access-filtered server-side by loadAssignedCardsFromDatabase()
+  // (real DB app/role/card checks). Do NOT re-filter against useAuth().roles here:
+  // when AuthProvider hydrates from the SSO cookie path those roles have app_id: "",
+  // which would veto every card and intermittently show "No modules assigned".
   const visibleModules = useMemo(
     () =>
       safeModules.filter(
-        (moduleDefinition) =>
-          moduleDefinition?.key && moduleDefinition?.appId && hasAppAccess(roles, moduleDefinition.appId),
+        (moduleDefinition) => moduleDefinition?.key && moduleDefinition?.appId,
       ),
-    [roles, safeModules],
+    [safeModules],
   );
 
   const groupedModules = useMemo(() => {

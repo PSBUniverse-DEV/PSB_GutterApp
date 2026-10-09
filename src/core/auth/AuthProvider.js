@@ -1,25 +1,24 @@
 "use client";
 
-import { createContext, useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
+import { AuthContext, DEFAULT_AUTH_CONTEXT } from "@/core/auth/AuthContext";
 import { getSupabase, initSupabase } from "@/core/supabase/client";
 import { bootstrapAuthState } from "@/core/auth/bootstrap.actions";
+import SessionExpiryModal from "@/core/auth/SessionExpiryModal";
 import {
+  SSO_ENABLED,
+  IS_MODULE,
   validateSessionToken,
+  extendSession,
   buildUserFromSSOSession,
   buildDbUserFromSSOSession,
   buildRolesFromSSOSession,
+  clearIntrospectCache,
+  clearPSBUserPayloadCookie,
+  redirectToLogin,
 } from "@/core/sso-client";
 
 initSupabase(process.env.NEXT_PUBLIC_SUPABASE_URL, process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY);
-
-export const DEFAULT_AUTH_CONTEXT = Object.freeze({
-  authUser: null,
-  dbUser: null,
-  roles: [],
-  loading: true,
-});
-
-export const AuthContext = createContext(DEFAULT_AUTH_CONTEXT);
 
 function fallbackUserFromAuth(user) {
   return {
@@ -84,6 +83,16 @@ export default function AuthProvider({ children }) {
   const [dbUser, setDbUser] = useState(null);
   const [roles, setRoles] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [authError, setAuthError] = useState("");
+  const [sessionWarningExpiresAt, setSessionWarningExpiresAt] = useState(null);
+  const [renewalBusy, setRenewalBusy] = useState(false);
+  const [renewalError, setRenewalError] = useState("");
+  const dismissedSessionExpiryRef = useRef(null);
+  const renewSessionRef = useRef(null);
+  const sessionEstablishmentPendingRef = useRef(false);
+  const checkSessionRef = useRef(null);
+  const sessionRevisionRef = useRef(0);
+  const logoutPendingRef = useRef(false);
   const hasInitializedRef = useRef(false);
   const lastAuthUserIdRef = useRef(null);
   const lastBootstrapTsRef = useRef(0);
@@ -142,6 +151,12 @@ export default function AuthProvider({ children }) {
   useEffect(() => {
     const supabase = getSupabase();
     let active = true;
+    let sessionEnded = false;
+    let checkingSession = false;
+    let sessionExpiryTimer = null;
+    let sessionWarningTimer = null;
+    let verifiedSessionExpiresAt = null;
+    let renewingSession = false;
 
     /**
      * Build a stable fingerprint that uniquely identifies the current session.
@@ -167,6 +182,10 @@ export default function AuthProvider({ children }) {
       setAuthUser(null);
       setDbUser(null);
       setRoles([]);
+      setAuthError("");
+      setSessionWarningExpiresAt(null);
+      setRenewalError("");
+      dismissedSessionExpiryRef.current = null;
       lastAuthUserIdRef.current = null;
       lastSessionFingerprintRef.current = null;
       lastHydratedUserRef.current = null;
@@ -174,11 +193,122 @@ export default function AuthProvider({ children }) {
       setLoading(false);
     }
 
+    function endSession() {
+      if (!active || sessionEnded || logoutPendingRef.current || !lastAuthUserIdRef.current) return;
+      sessionEnded = true;
+      clearAccessTokenCookie();
+      clearPSBUserPayloadCookie();
+      clearIntrospectCache();
+      resetAuthState();
+      window.setTimeout(async () => {
+        await supabase.auth.signOut({ scope: "local" }).catch(() => {});
+        if (!logoutPendingRef.current) redirectToLogin(window.location.pathname + window.location.search);
+      }, 0);
+    }
+
+    function updateSessionExpiry(expiresAt) {
+      if (sessionExpiryTimer !== null) window.clearTimeout(sessionExpiryTimer);
+      if (sessionWarningTimer !== null) window.clearTimeout(sessionWarningTimer);
+      verifiedSessionExpiresAt = Number.isFinite(expiresAt) ? expiresAt : null;
+      if (verifiedSessionExpiresAt === null) {
+        setSessionWarningExpiresAt(null);
+        return;
+      }
+
+      const remaining = verifiedSessionExpiresAt - Date.now();
+      sessionExpiryTimer = window.setTimeout(checkSession, Math.max(0, Math.min(remaining, 2_147_483_647)));
+      const showWarning = () => {
+        if (!active || sessionEnded || dismissedSessionExpiryRef.current === verifiedSessionExpiresAt) return;
+        setSessionWarningExpiresAt(verifiedSessionExpiresAt);
+      };
+      if (remaining <= 10 * 60 * 1000) {
+        showWarning();
+      } else {
+        setSessionWarningExpiresAt(null);
+        sessionWarningTimer = window.setTimeout(showWarning, Math.min(remaining - 10 * 60 * 1000, 2_147_483_647));
+      }
+    }
+
+    function hydrateSSOState(session) {
+      if (!active || sessionEnded) return;
+      const ssoUser = buildUserFromSSOSession(session);
+      const ssoDbUser = buildDbUserFromSSOSession(session);
+      const ssoRoles = buildRolesFromSSOSession(session);
+      if (
+        lastAuthUserIdRef.current !== ssoUser.id ||
+        JSON.stringify(lastHydratedUserRef.current) !== JSON.stringify(ssoDbUser) ||
+        JSON.stringify(lastHydratedRolesRef.current) !== JSON.stringify(ssoRoles)
+      ) {
+        setAuthUser(ssoUser);
+        setDbUser(ssoDbUser);
+        setRoles(ssoRoles);
+      }
+      lastAuthUserIdRef.current = ssoUser.id;
+      lastHydratedUserRef.current = ssoDbUser;
+      lastHydratedRolesRef.current = ssoRoles;
+      setLoading(false);
+    }
+
+    async function checkSession() {
+      if (!SSO_ENABLED || !active || sessionEnded || logoutPendingRef.current || renewingSession || sessionEstablishmentPendingRef.current || !hasInitializedRef.current ||
+          !lastAuthUserIdRef.current) return;
+      if (checkingSession) return;
+      checkingSession = true;
+      const revision = sessionRevisionRef.current;
+      try {
+        const session = await validateSessionToken({ forceRefresh: true });
+        if (!active || sessionEnded || logoutPendingRef.current || sessionEstablishmentPendingRef.current || revision !== sessionRevisionRef.current) return;
+        if (session === undefined) {
+          if (verifiedSessionExpiresAt !== null && verifiedSessionExpiresAt <= Date.now()) endSession();
+          return;
+        }
+        if (!session?.userId || (Number.isFinite(session.expiresAt) && session.expiresAt <= Date.now())) {
+          endSession();
+          return;
+        }
+        if (IS_MODULE) hydrateSSOState(session);
+        updateSessionExpiry(session.expiresAt);
+      } finally {
+        checkingSession = false;
+        if (active && !sessionEnded && !logoutPendingRef.current && !sessionEstablishmentPendingRef.current && revision !== sessionRevisionRef.current) {
+          window.setTimeout(checkSession, 0);
+        }
+      }
+    }
+
+    async function renewCurrentSession() {
+      if (!active || sessionEnded || renewingSession) return;
+      renewingSession = true;
+      sessionRevisionRef.current += 1;
+      setRenewalBusy(true);
+      setRenewalError("");
+      try {
+        const renewed = await extendSession();
+        if (!active || sessionEnded) return;
+        dismissedSessionExpiryRef.current = null;
+        updateSessionExpiry(renewed.expiresAt);
+      } catch (error) {
+        if (!active || sessionEnded) return;
+        if (error.status === 401) {
+          endSession();
+        } else {
+          setRenewalError("Unable to extend your session. Please try again before it expires.");
+        }
+      } finally {
+        renewingSession = false;
+        if (active) setRenewalBusy(false);
+        checkSession();
+      }
+    }
+
+    renewSessionRef.current = renewCurrentSession;
+    checkSessionRef.current = checkSession;
+
     async function hydrateAuthState(user, options = {}) {
       const background = Boolean(options.background);
       const syncBootstrap = options.syncBootstrap !== false;
 
-      if (!active) {
+      if (!active || sessionEnded) {
         return;
       }
 
@@ -237,7 +367,7 @@ export default function AuthProvider({ children }) {
         resolvedRoles = [];
       }
 
-      if (!active) {
+      if (!active || sessionEnded) {
         return;
       }
 
@@ -276,9 +406,31 @@ export default function AuthProvider({ children }) {
     }
 
     async function initializeAuth() {
+      console.debug('[Auth] initializeAuth — mounting');  // remove when bug confirmed fixed
       setLoading(true);
 
       try {
+        if (SSO_ENABLED) {
+          const ssoSession = await validateSessionToken({ forceRefresh: true });
+          if (!active || sessionEnded) return;
+          if (ssoSession === undefined) {
+            setAuthError("Unable to verify your session with core. Please try again.");
+            setLoading(false);
+          } else if (ssoSession?.userId &&
+              (!Number.isFinite(ssoSession.expiresAt) || ssoSession.expiresAt > Date.now())) {
+            if (IS_MODULE) {
+              hydrateSSOState(ssoSession);
+              updateSessionExpiry(ssoSession.expiresAt);
+              return;
+            }
+          } else {
+            clearAccessTokenCookie();
+            await resetAuthState();
+          }
+          if (ssoSession === undefined || !ssoSession?.userId ||
+              (Number.isFinite(ssoSession.expiresAt) && ssoSession.expiresAt <= Date.now())) return;
+        }
+
         const { data: sessionData } = await supabase.auth.getSession();
         if (sessionData?.session?.access_token) {
           setAccessTokenCookie(sessionData.session);
@@ -314,20 +466,9 @@ export default function AuthProvider({ children }) {
 
           // ── Fallback 2: Try SSO session (psb_session cookie from Core Portal) ──
           try {
-            const ssoSession = await validateSessionToken();
+            const ssoSession = SSO_ENABLED ? await validateSessionToken() : null;
             if (ssoSession?.userId) {
-              const ssoUser = buildUserFromSSOSession(ssoSession);
-              const ssoDbUser = buildDbUserFromSSOSession(ssoSession);
-              const ssoRoles = buildRolesFromSSOSession(ssoSession);
-
-              setAuthUser(ssoUser);
-              setDbUser(ssoDbUser);
-              setRoles(ssoRoles);
-              lastAuthUserIdRef.current = ssoUser.id;
-              // Seed snapshot refs for the same reason as above.
-              lastHydratedUserRef.current = ssoDbUser;
-              lastHydratedRolesRef.current = ssoRoles;
-              setLoading(false);
+              hydrateSSOState(ssoSession);
               return;
             }
           } catch {
@@ -341,28 +482,36 @@ export default function AuthProvider({ children }) {
         await hydrateAuthState(data?.user ?? null);
       } finally {
         hasInitializedRef.current = true;
+        if (!IS_MODULE) checkSession();
       }
     }
 
     initializeAuth();
 
     const { data } = supabase.auth.onAuthStateChange((event, session) => {
+      console.debug('[Auth] onAuthStateChange', event, { init: hasInitializedRef.current, userId: lastAuthUserIdRef.current });  // remove when bug confirmed fixed
+      if (!active || sessionEnded || logoutPendingRef.current) return;
+      if (event === "SIGNED_OUT" && lastAuthUserIdRef.current) {
+        clearAccessTokenCookie();
+        if (SSO_ENABLED) window.setTimeout(checkSession, 0);
+        else resetAuthState();
+        return;
+      }
+      if (SSO_ENABLED && !lastAuthUserIdRef.current && !sessionEstablishmentPendingRef.current) return;
+      if (SSO_ENABLED && IS_MODULE) return;
       if (session?.access_token) {
         setAccessTokenCookie(session);
       } else if (event === "SIGNED_OUT") {
         clearAccessTokenCookie();
       }
 
-      if (!hasInitializedRef.current && event === "INITIAL_SESSION") {
+      // Block all events until initializeAuth() completes — it handles the initial session.
+      if (!hasInitializedRef.current && event !== "SIGNED_OUT") {
         return;
       }
 
-      // ── Fix E: Discard INITIAL_SESSION after initial hydration ──
-      // Once this tab has completed its own initialization, any
-      // further INITIAL_SESSION events can only be broadcasts from
-      // other tabs being opened/duplicated. We already know our
-      // session state — no need to re-process.
-      if (hasInitializedRef.current && event === "INITIAL_SESSION") {
+      // After init, INITIAL_SESSION is a replay from another tab opening — ignore.
+      if (event === "INITIAL_SESSION") {
         return;
       }
 
@@ -406,19 +555,30 @@ export default function AuthProvider({ children }) {
       hydrateAuthState(sessionUser, {
         background: true,
         syncBootstrap: event !== "TOKEN_REFRESHED",
-      });
+      }).then(checkSession);
     });
 
     // ── Visibility Change Handler ───────────────────────────────────
     // Re-bootstrap roles when the tab regains focus (e.g. after an
-    // admin updates roles in another tab). Throttled to 30s to avoid
-    // rapid tab-switch triggers.
-    const VISIBILITY_THROTTLE_MS = 30_000;
+    // admin updates roles in another tab). Only fires if the tab was
+    // actually hidden long enough to be stale — not on quick tab switches.
+    let hiddenAt = null;
+    const STALE_THRESHOLD_MS = 5 * 60 * 1000; // 5 minutes
 
     function handleVisibilityChange() {
+      if (document.visibilityState === "hidden") {
+        hiddenAt = Date.now();
+        return;
+      }
+
       if (document.visibilityState !== "visible") return;
+      checkSession();
+      if (SSO_ENABLED && IS_MODULE) return;
       if (!hasInitializedRef.current || !lastAuthUserIdRef.current) return;
-      if (Date.now() - lastBootstrapTsRef.current < VISIBILITY_THROTTLE_MS) return;
+      if (hiddenAt == null) return;
+      const hiddenDuration = Date.now() - hiddenAt;
+      hiddenAt = null;
+      if (hiddenDuration < STALE_THRESHOLD_MS) return;
 
       // ── Fix D: Diff before hydrating on visibility change ──
       // Instead of blindly calling hydrateAuthState, we first fetch
@@ -459,9 +619,15 @@ export default function AuthProvider({ children }) {
     }
 
     document.addEventListener("visibilitychange", handleVisibilityChange);
+    const sessionCheckInterval = SSO_ENABLED ? window.setInterval(checkSession, 30_000) : null;
 
     return () => {
       active = false;
+      if (sessionCheckInterval !== null) window.clearInterval(sessionCheckInterval);
+      if (sessionExpiryTimer !== null) window.clearTimeout(sessionExpiryTimer);
+      if (sessionWarningTimer !== null) window.clearTimeout(sessionWarningTimer);
+      renewSessionRef.current = null;
+      checkSessionRef.current = null;
       data.subscription.unsubscribe();
       document.removeEventListener("visibilitychange", handleVisibilityChange);
     };
@@ -473,9 +639,41 @@ export default function AuthProvider({ children }) {
       dbUser,
       roles,
       loading,
+      authError,
+      beginSessionEstablishment: () => {
+        sessionRevisionRef.current += 1;
+        sessionEstablishmentPendingRef.current = true;
+      },
+      finishSessionEstablishment: async () => {
+        sessionEstablishmentPendingRef.current = false;
+        await checkSessionRef.current?.();
+      },
+      beginLogout: () => {
+        logoutPendingRef.current = true;
+        sessionRevisionRef.current += 1;
+      },
+      cancelLogout: () => {
+        logoutPendingRef.current = false;
+      },
     }),
-    [authUser, dbUser, roles, loading],
+    [authUser, dbUser, roles, loading, authError],
   );
 
-  return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
+  return (
+    <AuthContext.Provider value={value}>
+      {children}
+      {authUser && sessionWarningExpiresAt !== null ? (
+        <SessionExpiryModal
+          expiresAt={sessionWarningExpiresAt}
+          busy={renewalBusy}
+          error={renewalError}
+          onExtend={() => renewSessionRef.current?.()}
+          onDismiss={() => {
+            dismissedSessionExpiryRef.current = sessionWarningExpiresAt;
+            setSessionWarningExpiresAt(null);
+          }}
+        />
+      ) : null}
+    </AuthContext.Provider>
+  );
 }

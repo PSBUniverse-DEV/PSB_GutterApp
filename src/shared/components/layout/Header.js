@@ -1,13 +1,16 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
-import Link from "next/link";
-import { useRouter } from "next/navigation";
 import { Button } from "react-bootstrap";
 import Form from "react-bootstrap/Form";
-const CORE_PORTAL_URL = process.env.NEXT_PUBLIC_CORE_PORTAL_URL || "https://www.psbuniverse.com";
-const ENV = process.env.NEXT_PUBLIC_ENV || "local";
-const IS_PRODUCTION = ENV === "prod";
+import { IS_MODULE } from "@/core/sso-client";
+
+// Core's own tabs are plain paths, so they stay on whichever site is serving
+// the page (localhost, dev or prod). A module app runs on another host, so
+// its tabs link back to the portal configured for that deployment.
+const CORE_PORTAL_URL = IS_MODULE
+  ? (process.env.NEXT_PUBLIC_CORE_PORTAL_URL || "https://www.psbuniverse.com").replace(/\/+$/, "")
+  : "";
 const DALLAS_TIME_ZONE = "America/Chicago";
 
 function getDallasHour() {
@@ -113,7 +116,6 @@ export default function Header({
   loaderProgress = 0,
   loaderVisible = false,
 }) {
-  const router = useRouter();
   const [greeting, setGreeting] = useState(() => getTimeGreeting());
 
   useEffect(() => {
@@ -133,21 +135,22 @@ export default function Header({
   const canSeeExamples = useMemo(() => hasExampleNavAccess(roles), [roles]);
 
   const tabs = useMemo(() => {
-    // In production, tabs link to the core portal (e.g., https://www.psbuniverse.com/dashboard).
-    // In local/dev, tabs use relative paths so navigation stays within the current app.
-    const base = IS_PRODUCTION ? CORE_PORTAL_URL : "";
-
+    // These tabs represent the main PSBUniverse hub. In a module app
+    // CORE_PORTAL_URL is the portal's address (NEXT_PUBLIC_CORE_PORTAL_URL), so
+    // clicking them from a module host (e.g. map.psbuniverse.com) performs a
+    // real browser navigation back to the portal. In core it is empty, so the
+    // links are plain paths on the current site.
     const nextTabs = [
       {
         key: "my-psb",
         label: "My PSB",
-        href: `${base}/profile`,
+        href: `${CORE_PORTAL_URL}/profile`,
         active: isMyPsbPath(pathname),
       },
       {
         key: "my-apps",
         label: "My Apps",
-        href: `${base}/dashboard`,
+        href: `${CORE_PORTAL_URL}/dashboard`,
         active: isMyAppsPath(pathname),
       },
     ];
@@ -156,14 +159,14 @@ export default function Header({
       nextTabs.push({
         key: "example",
         label: "Example",
-        href: `${base}/examples`,
+        href: `${CORE_PORTAL_URL}/examples`,
         active: isExamplesPath(pathname),
       });
 
       nextTabs.push({
         key: "docs",
         label: "Docs",
-        href: `${base}/psbpages/documentation`,
+        href: `${CORE_PORTAL_URL}/psbpages/documentation`,
         active: isDocsPath(pathname),
       });
     }
@@ -182,13 +185,13 @@ export default function Header({
         </div>
         <nav className="app-header-tabs d-none d-md-flex" aria-label="Primary tabs">
           {tabs.map((tab) => (
-            <Link
+            <a
               key={tab.key}
               href={tab.href}
               className={`app-header-tab ${tab.active ? "active" : ""}`}
             >
               {tab.label}
-            </Link>
+            </a>
           ))}
         </nav>
         <div className="app-header-mobile-nav d-md-none">
